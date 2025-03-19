@@ -1,26 +1,133 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --foreground-rgb: 0, 0, 0;
+  --background-rgb: 255, 105, 180;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: rgb(var(--foreground-rgb));
+  background-color: rgb(var(--background-rgb));
+  image-rendering: pixelated;
+}
+
+/* Pixel art styling */
+.font-pixel {
+  font-family: var(--font-pixel);
+  letter-spacing: -0.05em;
+  line-height: 1.5;
+}
+
+.text-3xl.font-pixel {
+  font-size: 1.5rem; /* Smaller size for pixel font readability */
+}
+
+.text-2xl.font-pixel {
+  font-size: 1.25rem;
+}
+
+.text-xl.font-pixel {
+  font-size: 1rem;
+}
+
+.shadow-pixel {
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.8);
+  border: 2px solid #000;
+}
+
+.pixel-btn {
+  transition: all 0.1s ease;
+  transform: translateY(0);
+}
+
+.pixel-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.8);
+}
+
+.pixel-btn:active {
+  transform: translateY(2px);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
+}
+
+/* Pixel animations */
+@keyframes pixel-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.animate-pixel-pulse {
+  animation: pixel-pulse 2s infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Pixel art button styles */
+.pixel-button {
+  position: relative;
+  padding: 0.5rem 1rem;
+  background-color: #9370DB;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+}
+
+.pixel-button:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0px 0px rgba(0, 0, 0, 1);
+}
+
+.pixel-button:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0px 0px rgba(0, 0, 0, 1);
+}
+
+/* Pixel art input styles */
+.pixel-input {
+  padding: 0.5rem;
+  border: 2px solid #9370DB;
+  border-radius: 4px;
+  background-color: white;
+  transition: all 0.2s ease;
+}
+
+.pixel-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(147, 112, 219, 0.2);
+}
+
+/* Pixel art card styles */
+.pixel-card {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+  transition: all 0.2s ease;
+}
+
+.pixel-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px 0px rgba(0, 0, 0, 1);
 }
