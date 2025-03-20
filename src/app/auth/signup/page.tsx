@@ -52,7 +52,7 @@ export default function SignUp() {
     <div className="min-h-screen bg-pixel-pink flex items-center justify-center p-4">
       <div className="bg-white p-8 rounded-lg shadow-pixel max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-pixel text-pixel-purple mb-2">MeowTODO</h1>
+          <h1 className="text-3xl font-pixel text-pixel-purple mb-2">LunaTODO</h1>
           <p className="text-gray-600 font-pixel">Create your account</p>
         </div>
 

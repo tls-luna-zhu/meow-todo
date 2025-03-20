@@ -22,12 +22,12 @@ export default function SignIn() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
+    const username = formData.get('username') as string;
     const password = formData.get('password') as string;
 
     try {
       const result = await signIn('credentials', {
-        email,
+        username,
         password,
         redirect: false,
       });
@@ -50,7 +50,7 @@ export default function SignIn() {
     
     try {
       const result = await signIn('credentials', {
-        email: 'demo@example.com',
+        username: 'DemoUser',
         password: 'demopassword',
         redirect: false,
       });
@@ -73,7 +73,7 @@ export default function SignIn() {
           if (createResponse.ok) {
             // If account created successfully, try to sign in again
             const signInResult = await signIn('credentials', {
-              email: 'demo@example.com',
+              username: 'DemoUser',
               password: 'demopassword',
               redirect: false,
             });
@@ -102,7 +102,7 @@ export default function SignIn() {
     <div className="min-h-screen bg-pixel-pink flex items-center justify-center p-4">
       <div className="bg-white p-8 rounded-lg shadow-pixel max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-pixel text-pixel-purple mb-2">MeowTODO</h1>
+          <h1 className="text-3xl font-pixel text-pixel-purple mb-2">LunaTODO</h1>
           <p className="text-gray-600 font-pixel">Welcome back! Sign in to continue</p>
         </div>
 
@@ -110,21 +110,21 @@ export default function SignIn() {
           <form onSubmit={handleSubmit} className="space-y-6 font-pixel" autoComplete="off">
             <div className="hidden">
               {/* These fields are here to trick browsers' autofill */}
-              <input type="text" name="username" tabIndex={-1} />
+              <input type="text" name="username-hidden" tabIndex={-1} />
               <input type="password" name="hidden-password" tabIndex={-1} />
             </div>
             
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                Username
               </label>
               <input
-                type="email"
-                name="email"
-                id="email"
+                type="text"
+                name="username"
+                id="username"
                 required
                 className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-pixel-purple focus:ring-pixel-purple p-2 font-pixel"
-                placeholder="Enter your email"
+                placeholder="Enter your username"
                 autoComplete="off"
                 data-form-type="other"
                 data-lpignore="true"

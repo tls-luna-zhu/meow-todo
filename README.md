@@ -1,4 +1,4 @@
-# MeowTODO - Cute Pixel Art Todo List
+# LunaTODO - Cute Pixel Art Todo List
 
 A cute pixel art themed todo list application with social features. Share your todos with friends and keep track of your tasks in style!
 

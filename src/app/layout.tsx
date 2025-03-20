@@ -11,7 +11,7 @@ const pixelFont = Press_Start_2P({
 });
 
 export const metadata: Metadata = {
-  title: 'MeowTODO - Pixel Art Todo App',
+  title: 'LunaTODO - Pixel Art Todo App',
   description: 'A cute pixel art themed todo list application with social features!',
 };
 
