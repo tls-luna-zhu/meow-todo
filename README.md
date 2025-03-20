@@ -30,7 +30,7 @@ A cute pixel art themed todo list application with social features. Share your t
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/meow-todo.git
+git clone https://github.com/tls-luna-zhu/meow-todo.git
 cd meow-todo
 ```
 

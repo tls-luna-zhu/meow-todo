@@ -47,10 +47,10 @@ export default function SignUp() {
       <div className="bg-white p-8 rounded-lg shadow-pixel max-w-md w-full">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-pixel text-pixel-purple mb-2">MeowTODO</h1>
-          <p className="text-gray-600">Create your account</p>
+          <p className="text-gray-600 font-pixel">Create your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 font-pixel">
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-700">
               Username
@@ -60,7 +60,11 @@ export default function SignUp() {
               name="username"
               id="username"
               required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pixel-purple focus:ring-pixel-purple"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pixel-purple focus:ring-pixel-purple p-2 font-pixel"
+              placeholder="Choose a username"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck="false"
             />
           </div>
 
@@ -73,7 +77,11 @@ export default function SignUp() {
               name="email"
               id="email"
               required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pixel-purple focus:ring-pixel-purple"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pixel-purple focus:ring-pixel-purple p-2 font-pixel"
+              placeholder="Enter your email"
+              autoComplete="new-email"
+              autoCorrect="off"
+              spellCheck="false"
             />
           </div>
 
@@ -86,25 +94,29 @@ export default function SignUp() {
               name="password"
               id="password"
               required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pixel-purple focus:ring-pixel-purple"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pixel-purple focus:ring-pixel-purple p-2 font-pixel"
+              placeholder="Create a password"
+              autoComplete="new-password"
+              autoCorrect="off"
+              spellCheck="false"
             />
           </div>
 
           {error && (
-            <div className="text-red-500 text-sm">{error}</div>
+            <div className="text-red-500 text-sm font-pixel">{error}</div>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-pixel-purple hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pixel-purple disabled:opacity-50"
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-pixel text-white bg-pixel-purple hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pixel-purple disabled:opacity-50"
           >
             {loading ? 'Creating account...' : 'Sign up'}
           </button>
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 font-pixel">
             Already have an account?{' '}
             <Link href="/auth/signin" className="font-medium text-pixel-purple hover:text-opacity-90">
               Sign in

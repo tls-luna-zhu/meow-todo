@@ -181,6 +181,25 @@ export default function Todos() {
     }
   };
 
+  const handleRemoveFriend = async (friendId: string) => {
+    try {
+      setError('');
+      const response = await fetch(`/api/friends?friendId=${friendId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        fetchFriends();
+        fetchTodos();
+      } else {
+        const data = await response.json();
+        setError(data.error);
+      }
+    } catch (error) {
+      setError('Failed to remove friend');
+    }
+  };
+
   const handleLogout = async () => {
     await signOut({ redirect: false });
     router.push('/');
@@ -232,8 +251,11 @@ export default function Todos() {
                 placeholder="What needs to be done?"
                 value={newTodo.title}
                 onChange={(e) => setNewTodo({ ...newTodo, title: e.target.value })}
-                className="w-full px-4 py-2 rounded-md border-2 border-gray-300 focus:border-pixel-purple focus:ring-pixel-purple shadow-pixel"
+                className="w-full px-4 py-2 rounded-md border-2 border-gray-300 focus:border-pixel-purple focus:ring-pixel-purple shadow-pixel font-pixel placeholder:text-gray-400 placeholder:font-pixel"
                 required
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck="false"
               />
             </div>
             <div className="flex gap-4 flex-wrap md:flex-nowrap">
@@ -242,13 +264,17 @@ export default function Todos() {
                 placeholder="Description (optional)"
                 value={newTodo.description}
                 onChange={(e) => setNewTodo({ ...newTodo, description: e.target.value })}
-                className="flex-1 px-4 py-2 rounded-md border-2 border-gray-300 focus:border-pixel-purple focus:ring-pixel-purple shadow-pixel min-w-[200px]"
+                className="flex-1 px-4 py-2 rounded-md border-2 border-gray-300 focus:border-pixel-purple focus:ring-pixel-purple shadow-pixel min-w-[200px] font-pixel placeholder:text-gray-400 placeholder:font-pixel"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck="false"
               />
               <input
                 type="date"
                 value={newTodo.dueDate}
                 onChange={(e) => setNewTodo({ ...newTodo, dueDate: e.target.value })}
-                className="px-4 py-2 rounded-md border-2 border-gray-300 focus:border-pixel-purple focus:ring-pixel-purple shadow-pixel"
+                className="px-4 py-2 rounded-md border-2 border-gray-300 focus:border-pixel-purple focus:ring-pixel-purple shadow-pixel font-pixel"
+                autoComplete="off"
               />
               <button
                 type="submit"
@@ -276,8 +302,16 @@ export default function Todos() {
             ) : (
               <div className="flex flex-wrap gap-2">
                 {friends.map(friend => (
-                  <div key={friend._id} className="px-3 py-1 bg-pixel-green bg-opacity-20 rounded-full text-pixel-green font-pixel text-xs flex items-center">
+                  <div key={friend._id} className="px-3 py-1 bg-pixel-green bg-opacity-20 rounded-full text-pixel-green font-pixel text-xs flex items-center justify-between gap-2">
                     {friend.username}
+                    <button
+                      onClick={() => handleRemoveFriend(friend._id)}
+                      className="bg-red-400 hover:bg-red-500 rounded-full p-1 ml-1 transition-colors"
+                      aria-label={`Remove ${friend.username}`}
+                      title="Remove friend"
+                    >
+                      <FiX size={12} className="text-white" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -310,14 +344,14 @@ export default function Todos() {
                       {todo.title}
                     </h3>
                     {todo.description && (
-                      <p className="text-gray-600 text-sm">{todo.description}</p>
+                      <p className="text-gray-600 text-sm font-pixel">{todo.description}</p>
                     )}
                     {todo.dueDate && (
-                      <p className="text-gray-500 text-sm">
+                      <p className="text-gray-500 text-sm font-pixel">
                         Due: {new Date(todo.dueDate).toLocaleDateString()}
                       </p>
                     )}
-                    <p className="text-gray-400 text-sm">
+                    <p className="text-gray-400 text-sm font-pixel">
                       By: <span className="font-pixel">{todo.user.username}</span>
                     </p>
                   </div>
@@ -356,7 +390,10 @@ export default function Todos() {
                 placeholder="Search users..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-4 py-2 rounded-md border-2 border-gray-300 shadow-pixel"
+                className="w-full px-4 py-2 rounded-md border-2 border-gray-300 shadow-pixel font-pixel placeholder:text-gray-400 placeholder:font-pixel"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck="false"
               />
             </div>
             

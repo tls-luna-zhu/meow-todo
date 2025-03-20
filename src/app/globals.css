@@ -7,6 +7,12 @@
   --background-rgb: 255, 105, 180;
 }
 
+@layer base {
+  html {
+    font-family: var(--font-pixel), system-ui, sans-serif;
+  }
+}
+
 body {
   color: rgb(var(--foreground-rgb));
   background-color: rgb(var(--background-rgb));

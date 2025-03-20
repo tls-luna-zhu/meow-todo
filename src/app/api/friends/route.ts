@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
 import { authOptions } from '../auth/[...nextauth]/route';
+import mongoose from 'mongoose';
 
 export async function POST(request: Request) {
   try {
@@ -88,6 +89,59 @@ export async function GET() {
     console.error('Error fetching friends:', error);
     return NextResponse.json(
       { error: 'Failed to fetch friends' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const url = new URL(request.url);
+    const friendId = url.searchParams.get('friendId');
+
+    if (!friendId) {
+      return NextResponse.json(
+        { error: 'Friend ID is required' },
+        { status: 400 }
+      );
+    }
+
+    await connectDB();
+
+    // Get the current user and the friend
+    const user = await User.findById(session.user.id);
+    const friend = await User.findById(friendId);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Current user not found' },
+        { status: 404 }
+      );
+    }
+
+    if (!friend) {
+      return NextResponse.json(
+        { error: 'Friend not found' },
+        { status: 404 }
+      );
+    }
+
+    // Remove from each other's friends list
+    user.friends = user.friends.filter((id: mongoose.Types.ObjectId) => id.toString() !== friendId);
+    friend.friends = friend.friends.filter((id: mongoose.Types.ObjectId) => id.toString() !== session.user.id);
+
+    await Promise.all([user.save(), friend.save()]);
+
+    return NextResponse.json({ message: 'Friend removed successfully' });
+  } catch (error) {
+    console.error('Error removing friend:', error);
+    return NextResponse.json(
+      { error: 'Failed to remove friend' },
       { status: 500 }
     );
   }
