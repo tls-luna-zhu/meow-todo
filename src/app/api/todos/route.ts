@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import connectDB from '@/lib/db';
 import Todo from '@/models/Todo';
 import User from '@/models/User';
-import { authOptions } from '../auth/[...nextauth]/route';
+import { authOptions } from '../auth/[...nextauth]/options';
 
 export async function GET() {
   try {

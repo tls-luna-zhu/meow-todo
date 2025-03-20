@@ -1,17 +1,16 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import connectDB from '@/lib/db';
 import Todo from '@/models/Todo';
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { authOptions } from '../../auth/[...nextauth]/options';
 
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     await connectDB();
     
-    const todoId = params.id;
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -20,7 +19,7 @@ export async function PATCH(
     const { completed } = await request.json();
 
     const todo = await Todo.findOne({
-      _id: todoId,
+      _id: params.id,
       user: session.user.id,
     });
 
@@ -47,20 +46,19 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     await connectDB();
     
-    const todoId = params.id;
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const todo = await Todo.findOneAndDelete({
-      _id: todoId,
+      _id: params.id,
       user: session.user.id,
     });
 
