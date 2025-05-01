@@ -67,7 +67,25 @@ export default function Todos() {
     setSortByDueDate(!sortByDueDate);
   };
   
-  const sortedTodos = [...todos].sort((a, b) => {
+  // Filter todos into user's todos and friends' todos
+  const userTodos = todos.filter(todo => todo.user._id === session?.user?.id);
+  const friendsTodos = todos.filter(todo => todo.user._id !== session?.user?.id);
+  
+  // Sort user's todos
+  const sortedUserTodos = [...userTodos].sort((a, b) => {
+    if (sortByDueDate) {
+      // Handle cases where dueDate might be undefined
+      if (!a.dueDate && !b.dueDate) return 0;
+      if (!a.dueDate) return 1; // Items without due date go to the end
+      if (!b.dueDate) return -1; // Items without due date go to the end
+      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+    }
+    // Default sort by createdAt (newest first)
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+  
+  // Sort friends' todos
+  const sortedFriendsTodos = [...friendsTodos].sort((a, b) => {
     if (sortByDueDate) {
       // Handle cases where dueDate might be undefined
       if (!a.dueDate && !b.dueDate) return 0;
@@ -249,7 +267,7 @@ export default function Todos() {
 
   return (
     <div className="min-h-screen bg-pixel-pink p-4">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="bg-white rounded-lg shadow-pixel p-6 mb-6">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-pixel text-pixel-purple">My LunaTODO List</h1>
@@ -348,50 +366,91 @@ export default function Todos() {
             <div className="text-red-500 mb-4 font-pixel text-sm">{error}</div>
           )}
 
-          <div className="space-y-4">
-            {sortedTodos.length === 0 ? (
-              <p className="text-gray-500 font-pixel text-center py-6">No todos yet. Add one above!</p>
-            ) : (
-              sortedTodos.map((todo) => (
-                <div
-                  key={todo._id}
-                  className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border-2 border-gray-200 shadow-pixel"
-                >
-                  <button
-                    onClick={() => handleToggleTodo(todo._id, !todo.completed)}
-                    className={`p-2 rounded-full ${
-                      todo.completed ? 'bg-pixel-green' : 'bg-gray-300'
-                    } shadow-sm`}
-                  >
-                    <FiCheck className="text-white" />
-                  </button>
-                  <div className="flex-1">
-                    <h3 className={`text-lg font-pixel ${todo.completed ? 'line-through text-gray-500' : ''}`}>
-                      {todo.title}
-                    </h3>
-                    {todo.description && (
-                      <p className="text-gray-600 text-sm font-pixel">{todo.description}</p>
-                    )}
-                    {todo.dueDate && (
-                      <p className="text-gray-500 text-sm font-pixel">
-                        Due: {new Date(todo.dueDate).toLocaleDateString()}
-                      </p>
-                    )}
-                    <p className="text-gray-400 text-sm font-pixel">
-                      By: <span className="font-pixel">{todo.user.username}</span>
-                    </p>
-                  </div>
-                  {todo.user._id === session?.user?.id && (
-                    <button
-                      onClick={() => handleDeleteTodo(todo._id)}
-                      className="p-2 text-red-500 hover:bg-red-100 rounded-full"
+          {/* Two-column layout for todos */}
+          <div className="flex flex-col md:flex-row gap-6">
+            {/* User's Todos Column */}
+            <div className="flex-1">
+              <h2 className="text-xl font-pixel text-pixel-purple mb-4">My Tasks</h2>
+              <div className="space-y-4">
+                {sortedUserTodos.length === 0 ? (
+                  <p className="text-gray-500 font-pixel text-center py-6">No todos yet. Add one above!</p>
+                ) : (
+                  sortedUserTodos.map((todo) => (
+                    <div
+                      key={todo._id}
+                      className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border-2 border-gray-200 shadow-pixel"
                     >
-                      <FiTrash2 />
-                    </button>
-                  )}
-                </div>
-              ))
-            )}
+                      <button
+                        onClick={() => handleToggleTodo(todo._id, !todo.completed)}
+                        className={`p-2 rounded-full ${
+                          todo.completed ? 'bg-pixel-green' : 'bg-gray-300'
+                        } shadow-sm`}
+                      >
+                        <FiCheck className="text-white" />
+                      </button>
+                      <div className="flex-1">
+                        <h3 className={`text-lg font-pixel ${todo.completed ? 'line-through text-gray-500' : ''}`}>
+                          {todo.title}
+                        </h3>
+                        {todo.description && (
+                          <p className="text-gray-600 text-sm font-pixel">{todo.description}</p>
+                        )}
+                        {todo.dueDate && (
+                          <p className="text-gray-500 text-sm font-pixel">
+                            Due: {new Date(todo.dueDate).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleDeleteTodo(todo._id)}
+                        className="p-2 text-red-500 hover:bg-red-100 rounded-full"
+                      >
+                        <FiTrash2 />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Friends' Todos Column */}
+            <div className="flex-1 md:border-l-2 md:border-gray-200 md:pl-6">
+              <h2 className="text-xl font-pixel text-pixel-blue mb-4">Friends' Tasks</h2>
+              <div className="space-y-4">
+                {sortedFriendsTodos.length === 0 ? (
+                  <p className="text-gray-500 font-pixel text-center py-6">No friend tasks yet.</p>
+                ) : (
+                  sortedFriendsTodos.map((todo) => (
+                    <div
+                      key={todo._id}
+                      className="flex items-center gap-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-100 shadow-pixel"
+                    >
+                      <div className={`p-2 rounded-full ${
+                        todo.completed ? 'bg-pixel-green' : 'bg-gray-300'
+                      } shadow-sm`}>
+                        <FiCheck className="text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className={`text-lg font-pixel ${todo.completed ? 'line-through text-gray-500' : ''}`}>
+                          {todo.title}
+                        </h3>
+                        {todo.description && (
+                          <p className="text-gray-600 text-sm font-pixel">{todo.description}</p>
+                        )}
+                        {todo.dueDate && (
+                          <p className="text-gray-500 text-sm font-pixel">
+                            Due: {new Date(todo.dueDate).toLocaleDateString()}
+                          </p>
+                        )}
+                        <p className="text-blue-400 text-sm font-pixel">
+                          By: <span className="font-pixel">{todo.user.username}</span>
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
