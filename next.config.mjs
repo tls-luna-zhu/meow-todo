@@ -4,6 +4,9 @@ const nextConfig = {
   webpack: (config) => {
     // Add specific handling for Mongoose in server components
     config.externals = [...(config.externals || []), 'mongoose'];
+    // Disable the automatic favicon.ico handling
+    // This prevents Next.js from trying to serve a default favicon.ico
+    // and allows our custom SVG favicon to work properly
     return config;
   },
   typescript: {
@@ -17,4 +20,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig; 
+export default nextConfig;

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { FiPlus, FiTrash2, FiCheck, FiUserPlus, FiLogOut, FiUsers, FiX } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiCheck, FiUserPlus, FiLogOut, FiUsers, FiX, FiClock } from 'react-icons/fi';
 
 interface Todo {
   _id: string;
@@ -35,6 +35,7 @@ export default function Todos() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [friends, setFriends] = useState<User[]>([]);
+  const [sortByDueDate, setSortByDueDate] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -61,6 +62,22 @@ export default function Todos() {
       setLoading(false);
     }
   };
+  
+  const handleSortByDueDate = () => {
+    setSortByDueDate(!sortByDueDate);
+  };
+  
+  const sortedTodos = [...todos].sort((a, b) => {
+    if (sortByDueDate) {
+      // Handle cases where dueDate might be undefined
+      if (!a.dueDate && !b.dueDate) return 0;
+      if (!a.dueDate) return 1; // Items without due date go to the end
+      if (!b.dueDate) return -1; // Items without due date go to the end
+      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+    }
+    // Default sort by createdAt (newest first)
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
 
   // Fetch current friends
   const fetchFriends = async () => {
@@ -286,12 +303,21 @@ export default function Todos() {
           </form>
 
           <div className="flex gap-4 mb-6 justify-between items-center">
-            <h2 className="text-xl font-pixel text-pixel-green">Friends</h2>
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-pixel text-pixel-green">Friends</h2>
+              <button
+                onClick={handleOpenUserList}
+                className="px-4 py-2 bg-pixel-green text-white rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm"
+              >
+                <FiUsers /> Find Friends
+              </button>
+            </div>
             <button
-              onClick={handleOpenUserList}
-              className="px-4 py-2 bg-pixel-green text-white rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm"
+              onClick={handleSortByDueDate}
+              className={`px-4 py-2 ${sortByDueDate ? 'bg-pixel-purple' : 'bg-pixel-blue'} text-white rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm`}
+              title={sortByDueDate ? "Sorted by due date" : "Sort by due date"}
             >
-              <FiUsers /> Find Friends
+              <FiClock /> {sortByDueDate ? "Sorted by Date" : "Sort by Date"}
             </button>
           </div>
 
@@ -323,10 +349,10 @@ export default function Todos() {
           )}
 
           <div className="space-y-4">
-            {todos.length === 0 ? (
+            {sortedTodos.length === 0 ? (
               <p className="text-gray-500 font-pixel text-center py-6">No todos yet. Add one above!</p>
             ) : (
-              todos.map((todo) => (
+              sortedTodos.map((todo) => (
                 <div
                   key={todo._id}
                   className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border-2 border-gray-200 shadow-pixel"
@@ -433,4 +459,4 @@ export default function Todos() {
       )}
     </div>
   );
-} 
+}
