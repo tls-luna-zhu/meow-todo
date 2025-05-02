@@ -16,7 +16,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { completed } = await request.json();
+    const updates = await request.json();
 
     const todo = await Todo.findOne({
       _id: params.id,
@@ -30,7 +30,12 @@ export async function PATCH(
       );
     }
 
-    todo.completed = completed;
+    // Update only the fields that are provided
+    if (updates.completed !== undefined) todo.completed = updates.completed;
+    if (updates.title) todo.title = updates.title;
+    if (updates.description !== undefined) todo.description = updates.description;
+    if (updates.dueDate !== undefined) todo.dueDate = updates.dueDate;
+    
     await todo.save();
 
     const updatedTodo = await Todo.findById(todo._id).populate('user', 'username');
@@ -77,4 +82,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-} 
+}

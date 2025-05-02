@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { FiPlus, FiTrash2, FiCheck, FiUserPlus, FiLogOut, FiUsers, FiX, FiClock } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiCheck, FiUserPlus, FiLogOut, FiUsers, FiX, FiClock, FiEdit2 } from 'react-icons/fi';
 
 interface Todo {
   _id: string;
@@ -36,6 +36,8 @@ export default function Todos() {
   const [searchTerm, setSearchTerm] = useState('');
   const [friends, setFriends] = useState<User[]>([]);
   const [sortByDueDate, setSortByDueDate] = useState(false);
+  const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
+  const [editFormData, setEditFormData] = useState({ title: '', description: '', dueDate: '' });
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -188,6 +190,43 @@ export default function Todos() {
       }
     } catch (error) {
       setError('Failed to delete todo');
+    }
+  };
+
+  const handleEditTodo = (todo: Todo) => {
+    setEditingTodo(todo);
+    setEditFormData({
+      title: todo.title,
+      description: todo.description || '',
+      dueDate: todo.dueDate ? new Date(todo.dueDate).toISOString().split('T')[0] : '',
+    });
+  };
+
+  const handleUpdateTodo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTodo) return;
+
+    try {
+      const response = await fetch(`/api/todos/${editingTodo._id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editFormData),
+      });
+
+      if (response.ok) {
+        const updatedTodo = await response.json();
+        setTodos(todos.map(todo =>
+          todo._id === editingTodo._id ? updatedTodo : todo
+        ));
+        setEditingTodo(null);
+      } else {
+        const data = await response.json();
+        setError(data.error);
+      }
+    } catch (error) {
+      setError('Failed to update todo');
     }
   };
 
@@ -401,12 +440,20 @@ export default function Todos() {
                           </p>
                         )}
                       </div>
-                      <button
-                        onClick={() => handleDeleteTodo(todo._id)}
-                        className="p-2 text-red-500 hover:bg-red-100 rounded-full"
-                      >
-                        <FiTrash2 />
-                      </button>
+                      <div className="flex">
+                        <button
+                          onClick={() => handleEditTodo(todo)}
+                          className="p-2 text-blue-500 hover:bg-blue-100 rounded-full mr-1"
+                        >
+                          <FiEdit2 />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTodo(todo._id)}
+                          className="p-2 text-red-500 hover:bg-red-100 rounded-full"
+                        >
+                          <FiTrash2 />
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}
@@ -454,6 +501,71 @@ export default function Todos() {
           </div>
         </div>
       </div>
+
+      {/* Edit Todo Modal */}
+      {editingTodo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-pixel p-6 max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-pixel text-pixel-purple">Edit Task</h2>
+              <button 
+                onClick={() => setEditingTodo(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleUpdateTodo} className="space-y-4">
+              <div>
+                <label className="block text-sm font-pixel mb-1">Title</label>
+                <input
+                  type="text"
+                  value={editFormData.title}
+                  onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
+                  className="w-full px-4 py-2 rounded-md border-2 border-gray-300 focus:border-pixel-purple focus:ring-pixel-purple shadow-pixel font-pixel"
+                  required
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-pixel mb-1">Description (optional)</label>
+                <input
+                  type="text"
+                  value={editFormData.description}
+                  onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                  className="w-full px-4 py-2 rounded-md border-2 border-gray-300 focus:border-pixel-purple focus:ring-pixel-purple shadow-pixel font-pixel"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-pixel mb-1">Due Date (optional)</label>
+                <input
+                  type="date"
+                  value={editFormData.dueDate}
+                  onChange={(e) => setEditFormData({ ...editFormData, dueDate: e.target.value })}
+                  className="w-full px-4 py-2 rounded-md border-2 border-gray-300 focus:border-pixel-purple focus:ring-pixel-purple shadow-pixel font-pixel"
+                />
+              </div>
+              <div className="flex justify-end gap-2 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setEditingTodo(null)}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md shadow-pixel pixel-btn font-pixel text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-pixel-purple text-white rounded-md shadow-pixel pixel-btn font-pixel text-sm"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Modal for showing all users */}
       {showUserList && (
