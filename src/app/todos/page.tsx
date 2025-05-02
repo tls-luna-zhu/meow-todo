@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { FiPlus, FiTrash2, FiCheck, FiUserPlus, FiLogOut, FiUsers, FiX, FiClock, FiEdit2 } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiCheck, FiUserPlus, FiLogOut, FiUsers, FiX, FiClock, FiEdit2, FiEye, FiEyeOff } from 'react-icons/fi';
 
 interface Todo {
   _id: string;
@@ -36,6 +36,7 @@ export default function Todos() {
   const [searchTerm, setSearchTerm] = useState('');
   const [friends, setFriends] = useState<User[]>([]);
   const [sortByDueDate, setSortByDueDate] = useState(false);
+  const [hideCompleted, setHideCompleted] = useState(false);
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
   const [editFormData, setEditFormData] = useState({ title: '', description: '', dueDate: '' });
 
@@ -73,8 +74,17 @@ export default function Todos() {
   const userTodos = todos.filter(todo => todo.user._id === session?.user?.id);
   const friendsTodos = todos.filter(todo => todo.user._id !== session?.user?.id);
   
+  // Apply hide completed filter if enabled
+  const filteredUserTodos = hideCompleted 
+    ? userTodos.filter(todo => !todo.completed) 
+    : userTodos;
+    
+  const filteredFriendsTodos = hideCompleted 
+    ? friendsTodos.filter(todo => !todo.completed) 
+    : friendsTodos;
+  
   // Sort user's todos
-  const sortedUserTodos = [...userTodos].sort((a, b) => {
+  const sortedUserTodos = [...filteredUserTodos].sort((a, b) => {
     if (sortByDueDate) {
       // Handle cases where dueDate might be undefined
       if (!a.dueDate && !b.dueDate) return 0;
@@ -87,7 +97,7 @@ export default function Todos() {
   });
   
   // Sort friends' todos
-  const sortedFriendsTodos = [...friendsTodos].sort((a, b) => {
+  const sortedFriendsTodos = [...filteredFriendsTodos].sort((a, b) => {
     if (sortByDueDate) {
       // Handle cases where dueDate might be undefined
       if (!a.dueDate && !b.dueDate) return 0;
@@ -98,6 +108,10 @@ export default function Todos() {
     // Default sort by createdAt (newest first)
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
+
+  const handleToggleHideCompleted = () => {
+    setHideCompleted(!hideCompleted);
+  };
 
   // Fetch current friends
   const fetchFriends = async () => {
@@ -369,13 +383,22 @@ export default function Todos() {
                 <FiUsers /> Find Friends
               </button>
             </div>
-            <button
-              onClick={handleSortByDueDate}
-              className={`px-4 py-2 ${sortByDueDate ? 'bg-pixel-purple' : 'bg-pixel-blue'} text-white rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm`}
-              title={sortByDueDate ? "Sorted by due date" : "Sort by due date"}
-            >
-              <FiClock /> {sortByDueDate ? "Sorted by Date" : "Sort by Date"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleToggleHideCompleted}
+                className={`px-4 py-2 ${hideCompleted ? 'bg-pixel-purple' : 'bg-pixel-pink'} text-white rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm`}
+                title={hideCompleted ? "Show completed tasks" : "Hide completed tasks"}
+              >
+                {hideCompleted ? <FiEye /> : <FiEyeOff />} {hideCompleted ? "Show Completed" : "Hide Completed"}
+              </button>
+              <button
+                onClick={handleSortByDueDate}
+                className={`px-4 py-2 ${sortByDueDate ? 'bg-pixel-purple' : 'bg-pixel-blue'} text-white rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm`}
+                title={sortByDueDate ? "Sorted by due date" : "Sort by due date"}
+              >
+                <FiClock /> {sortByDueDate ? "Sorted by Date" : "Sort by Date"}
+              </button>
+            </div>
           </div>
 
           {/* Current Friends List */}

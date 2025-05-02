@@ -32,9 +32,9 @@ export async function PATCH(
 
     // Update only the fields that are provided
     if (updates.completed !== undefined) todo.completed = updates.completed;
-    if (updates.title) todo.title = updates.title;
-    if (updates.description !== undefined) todo.description = updates.description;
-    if (updates.dueDate !== undefined) todo.dueDate = updates.dueDate;
+    if (updates.title !== undefined) todo.title = updates.title;
+    if (updates.description !== undefined) todo.description = updates.description || '';
+    if (updates.dueDate !== undefined) todo.dueDate = updates.dueDate || null;
     
     await todo.save();
 
