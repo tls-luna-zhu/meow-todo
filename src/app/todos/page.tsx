@@ -11,6 +11,7 @@ interface Todo {
   description?: string;
   completed: boolean;
   createdAt: string;
+  updatedAt?: string;
   dueDate?: string;
   user: {
     username: string;
@@ -39,6 +40,7 @@ export default function Todos() {
   const [hideCompleted, setHideCompleted] = useState(false);
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
   const [editFormData, setEditFormData] = useState({ title: '', description: '', dueDate: '' });
+  const [secondColumnView, setSecondColumnView] = useState<'friends' | 'completed'>('friends');
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -48,6 +50,13 @@ export default function Todos() {
       fetchFriends();
     }
   }, [status, router]);
+  
+  // Automatically hide completed tasks when viewing the Finished Tasks view
+  useEffect(() => {
+    if (secondColumnView === 'completed') {
+      setHideCompleted(true);
+    }
+  }, [secondColumnView]);
 
   // Fetch the current user's todos and their friends' todos
   const fetchTodos = async () => {
@@ -70,9 +79,10 @@ export default function Todos() {
     setSortByDueDate(!sortByDueDate);
   };
   
-  // Filter todos into user's todos and friends' todos
+  // Filter todos into user's todos, completed todos, and friends' todos
   const userTodos = todos.filter(todo => todo.user._id === session?.user?.id);
   const friendsTodos = todos.filter(todo => todo.user._id !== session?.user?.id);
+  const completedTodos = userTodos.filter(todo => todo.completed);
   
   // Apply hide completed filter if enabled
   const filteredUserTodos = hideCompleted 
@@ -106,6 +116,19 @@ export default function Todos() {
       return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
     }
     // Default sort by createdAt (newest first)
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+  
+  // Sort completed todos
+  const sortedCompletedTodos = [...completedTodos].sort((a, b) => {
+    if (sortByDueDate) {
+      // Handle cases where dueDate might be undefined
+      if (!a.dueDate && !b.dueDate) return 0;
+      if (!a.dueDate) return 1; // Items without due date go to the end
+      if (!b.dueDate) return -1; // Items without due date go to the end
+      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+    }
+    // Default sort by completedAt or createdAt (newest first)
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
@@ -483,43 +506,113 @@ export default function Todos() {
               </div>
             </div>
 
-            {/* Friends' Todos Column */}
+            {/* Second Column - Toggle between Friends' Tasks and Completed Tasks */}
             <div className="flex-1 md:border-l-2 md:border-gray-200 md:pl-6">
-              <h2 className="text-xl font-pixel text-pixel-blue mb-4">Friends' Tasks</h2>
-              <div className="space-y-4">
-                {sortedFriendsTodos.length === 0 ? (
-                  <p className="text-gray-500 font-pixel text-center py-6">No friend tasks yet.</p>
-                ) : (
-                  sortedFriendsTodos.map((todo) => (
-                    <div
-                      key={todo._id}
-                      className="flex items-center gap-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-100 shadow-pixel"
-                    >
-                      <div className={`p-2 rounded-full ${
-                        todo.completed ? 'bg-pixel-green' : 'bg-gray-300'
-                      } shadow-sm`}>
-                        <FiCheck className="text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className={`text-lg font-pixel ${todo.completed ? 'line-through text-gray-500' : ''}`}>
-                          {todo.title}
-                        </h3>
-                        {todo.description && (
-                          <p className="text-gray-600 text-sm font-pixel">{todo.description}</p>
-                        )}
-                        {todo.dueDate && (
-                          <p className="text-gray-500 text-sm font-pixel">
-                            Due: {new Date(todo.dueDate).toLocaleDateString()}
-                          </p>
-                        )}
-                        <p className="text-blue-400 text-sm font-pixel">
-                          By: <span className="font-pixel">{todo.user.username}</span>
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                )}
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-pixel text-pixel-blue">
+                  {secondColumnView === 'friends' ? "Friends' Tasks" : "Finished Tasks"}
+                </h2>
+                <div className="relative">
+                  <select 
+                    value={secondColumnView}
+                    onChange={(e) => setSecondColumnView(e.target.value as 'friends' | 'completed')}
+                    className="appearance-none bg-white border-2 border-pixel-blue rounded-md px-4 py-2 pr-8 font-pixel text-pixel-blue shadow-pixel focus:outline-none focus:ring-2 focus:ring-pixel-purple focus:border-pixel-purple cursor-pointer transition-all hover:translate-y-[-2px]"
+                    style={{
+                      imageRendering: 'pixelated',
+                      boxShadow: '3px 3px 0 rgba(0, 0, 0, 0.2)',
+                      fontFamily: 'var(--font-pixel)'
+                    }}
+                  >
+                    <option value="friends" className="font-pixel" style={{ fontFamily: 'var(--font-pixel)' }}>☆ Friends' Tasks ☆</option>
+                    <option value="completed" className="font-pixel" style={{ fontFamily: 'var(--font-pixel)' }}>☆ Finished Tasks ☆</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-pixel-blue">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                      <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                    </svg>
+                  </div>
+                </div>
               </div>
+              
+              {secondColumnView === 'friends' ? (
+                // Friends' Tasks View
+                <div className="space-y-4">
+                  {sortedFriendsTodos.length === 0 ? (
+                    <p className="text-gray-500 font-pixel text-center py-6">No friend tasks yet.</p>
+                  ) : (
+                    sortedFriendsTodos.map((todo) => (
+                      <div
+                        key={todo._id}
+                        className="flex items-center gap-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-100 shadow-pixel"
+                      >
+                        <div className={`p-2 rounded-full ${
+                          todo.completed ? 'bg-pixel-green' : 'bg-gray-300'
+                        } shadow-sm`}>
+                          <FiCheck className="text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className={`text-lg font-pixel ${todo.completed ? 'line-through text-gray-500' : ''}`}>
+                            {todo.title}
+                          </h3>
+                          {todo.description && (
+                            <p className="text-gray-600 text-sm font-pixel">{todo.description}</p>
+                          )}
+                          {todo.dueDate && (
+                            <p className="text-gray-500 text-sm font-pixel">
+                              Due: {new Date(todo.dueDate).toLocaleDateString()}
+                            </p>
+                          )}
+                          <p className="text-blue-400 text-sm font-pixel">
+                            By: <span className="font-pixel">{todo.user.username}</span>
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              ) : (
+                // Completed Tasks View
+                <div className="space-y-4">
+                  {sortedCompletedTodos.length === 0 ? (
+                    <p className="text-gray-500 font-pixel text-center py-6">No completed tasks yet.</p>
+                  ) : (
+                    sortedCompletedTodos.map((todo) => (
+                      <div
+                        key={todo._id}
+                        className="flex items-center gap-4 p-4 bg-green-50 rounded-lg border-2 border-green-100 shadow-pixel"
+                      >
+                        <div className="p-2 rounded-full bg-pixel-green shadow-sm">
+                          <FiCheck className="text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-lg font-pixel line-through text-gray-500">
+                            {todo.title}
+                          </h3>
+                          {todo.description && (
+                            <p className="text-gray-600 text-sm font-pixel">{todo.description}</p>
+                          )}
+                          {todo.dueDate && (
+                            <p className="text-gray-500 text-sm font-pixel">
+                              Due: {new Date(todo.dueDate).toLocaleDateString()}
+                            </p>
+                          )}
+                          <p className="text-green-500 text-sm font-pixel">
+                            Completed on: {new Date(todo.updatedAt || todo.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex">
+                          <button
+                            onClick={() => handleDeleteTodo(todo._id)}
+                            className="p-2 text-red-500 hover:bg-red-100 rounded-full"
+                          >
+                            <FiTrash2 />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
