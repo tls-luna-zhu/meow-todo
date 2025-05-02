@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { FiPlus, FiTrash2, FiCheck, FiUserPlus, FiLogOut, FiUsers, FiX, FiClock, FiEdit2, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiCheck, FiUserPlus, FiLogOut, FiUsers, FiX, FiClock, FiEdit2, FiEye, FiEyeOff, FiCheckSquare } from 'react-icons/fi';
 
 interface Todo {
   _id: string;
@@ -37,7 +37,7 @@ export default function Todos() {
   const [searchTerm, setSearchTerm] = useState('');
   const [friends, setFriends] = useState<User[]>([]);
   const [sortByDueDate, setSortByDueDate] = useState(false);
-  const [hideCompleted, setHideCompleted] = useState(false);
+  const [hideCompletedUser, setHideCompletedUser] = useState(false);
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
   const [editFormData, setEditFormData] = useState({ title: '', description: '', dueDate: '' });
   const [secondColumnView, setSecondColumnView] = useState<'friends' | 'completed'>('friends');
@@ -51,13 +51,8 @@ export default function Todos() {
     }
   }, [status, router]);
   
-  // Automatically hide completed tasks when viewing the Finished Tasks view
-  useEffect(() => {
-    if (secondColumnView === 'completed') {
-      setHideCompleted(true);
-    }
-  }, [secondColumnView]);
-
+  // Removed automated hideCompleted setting when viewing Finished Tasks
+  
   // Fetch the current user's todos and their friends' todos
   const fetchTodos = async () => {
     try {
@@ -68,7 +63,8 @@ export default function Todos() {
       } else {
         setError(data.error);
       }
-    } catch (error) {
+    } catch (err) {
+      console.error('Failed to fetch todos:', err);
       setError('Failed to fetch todos');
     } finally {
       setLoading(false);
@@ -84,56 +80,62 @@ export default function Todos() {
   const friendsTodos = todos.filter(todo => todo.user._id !== session?.user?.id);
   const completedTodos = userTodos.filter(todo => todo.completed);
   
-  // Apply hide completed filter if enabled
-  const filteredUserTodos = hideCompleted 
+  // Apply hide completed filter ONLY to the user's todos, not to friends' todos
+  const filteredUserTodos = hideCompletedUser 
     ? userTodos.filter(todo => !todo.completed) 
     : userTodos;
     
-  const filteredFriendsTodos = hideCompleted 
-    ? friendsTodos.filter(todo => !todo.completed) 
-    : friendsTodos;
+  // Don't filter friends' todos by completion status
+  const filteredFriendsTodos = friendsTodos;
   
   // Sort user's todos
   const sortedUserTodos = [...filteredUserTodos].sort((a, b) => {
     if (sortByDueDate) {
-      // Handle cases where dueDate might be undefined
       if (!a.dueDate && !b.dueDate) return 0;
-      if (!a.dueDate) return 1; // Items without due date go to the end
-      if (!b.dueDate) return -1; // Items without due date go to the end
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
       return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
     }
-    // Default sort by createdAt (newest first)
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
   
   // Sort friends' todos
   const sortedFriendsTodos = [...filteredFriendsTodos].sort((a, b) => {
     if (sortByDueDate) {
-      // Handle cases where dueDate might be undefined
       if (!a.dueDate && !b.dueDate) return 0;
-      if (!a.dueDate) return 1; // Items without due date go to the end
-      if (!b.dueDate) return -1; // Items without due date go to the end
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
       return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
     }
-    // Default sort by createdAt (newest first)
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
   
   // Sort completed todos
   const sortedCompletedTodos = [...completedTodos].sort((a, b) => {
     if (sortByDueDate) {
-      // Handle cases where dueDate might be undefined
       if (!a.dueDate && !b.dueDate) return 0;
-      if (!a.dueDate) return 1; // Items without due date go to the end
-      if (!b.dueDate) return -1; // Items without due date go to the end
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
       return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
     }
-    // Default sort by completedAt or createdAt (newest first)
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
-  const handleToggleHideCompleted = () => {
-    setHideCompleted(!hideCompleted);
+  const handleToggleHideCompletedUser = () => {
+    setHideCompletedUser(!hideCompletedUser);
+  };
+
+  // Toggle function for second column view
+  const toggleSecondColumnView = () => {
+    if (secondColumnView === 'friends') {
+      // Switching to Finished Tasks view, hide completed tasks
+      setSecondColumnView('completed');
+      setHideCompletedUser(true);
+    } else {
+      // Switching to Friends' Tasks view, show completed tasks
+      setSecondColumnView('friends');
+      setHideCompletedUser(false);
+    }
   };
 
   // Fetch current friends
@@ -144,8 +146,8 @@ export default function Todos() {
         const data = await response.json();
         setFriends(data);
       }
-    } catch (error) {
-      console.error('Error fetching friends:', error);
+    } catch (err) {
+      console.error('Error fetching friends:', err);
     }
   };
 
@@ -161,7 +163,8 @@ export default function Todos() {
         const data = await response.json();
         setError(data.error);
       }
-    } catch (error) {
+    } catch (err) {
+      console.error('Failed to fetch users:', err);
       setError('Failed to fetch users');
     }
   };
@@ -185,7 +188,8 @@ export default function Todos() {
         const data = await response.json();
         setError(data.error);
       }
-    } catch (error) {
+    } catch (err) {
+      console.error('Failed to add todo:', err);
       setError('Failed to add todo');
     }
   };
@@ -208,7 +212,8 @@ export default function Todos() {
         const data = await response.json();
         setError(data.error);
       }
-    } catch (error) {
+    } catch (err) {
+      console.error('Failed to update todo:', err);
       setError('Failed to update todo');
     }
   };
@@ -225,7 +230,8 @@ export default function Todos() {
         const data = await response.json();
         setError(data.error);
       }
-    } catch (error) {
+    } catch (err) {
+      console.error('Failed to delete todo:', err);
       setError('Failed to delete todo');
     }
   };
@@ -262,7 +268,8 @@ export default function Todos() {
         const data = await response.json();
         setError(data.error);
       }
-    } catch (error) {
+    } catch (err) {
+      console.error('Failed to update todo:', err);
       setError('Failed to update todo');
     }
   };
@@ -287,7 +294,8 @@ export default function Todos() {
         const data = await response.json();
         setError(data.error);
       }
-    } catch (error) {
+    } catch (err) {
+      console.error('Failed to add friend:', err);
       setError('Failed to add friend');
     }
   };
@@ -306,7 +314,8 @@ export default function Todos() {
         const data = await response.json();
         setError(data.error);
       }
-    } catch (error) {
+    } catch (err) {
+      console.error('Failed to remove friend:', err);
       setError('Failed to remove friend');
     }
   };
@@ -396,7 +405,7 @@ export default function Todos() {
             </div>
           </form>
 
-          <div className="flex gap-4 mb-6 justify-between items-center">
+          <div className="flex gap-4 mb-6 justify-between items-center flex-wrap">
             <div className="flex items-center gap-4">
               <h2 className="text-xl font-pixel text-pixel-green">Friends</h2>
               <button
@@ -406,20 +415,20 @@ export default function Todos() {
                 <FiUsers /> Find Friends
               </button>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <button
-                onClick={handleToggleHideCompleted}
-                className={`px-4 py-2 ${hideCompleted ? 'bg-pixel-purple' : 'bg-pixel-pink'} text-white rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm`}
-                title={hideCompleted ? "Show completed tasks" : "Hide completed tasks"}
+                onClick={handleToggleHideCompletedUser}
+                className={`px-4 py-2 ${hideCompletedUser ? 'bg-pixel-purple' : 'bg-gray-400'} text-white rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm`}
+                title={hideCompletedUser ? "Show completed tasks" : "Hide completed tasks"}
               >
-                {hideCompleted ? <FiEye /> : <FiEyeOff />} {hideCompleted ? "Show Completed" : "Hide Completed"}
+                {hideCompletedUser ? <FiEye /> : <FiEyeOff />} {hideCompletedUser ? "Show Done" : "Hide Done"}
               </button>
               <button
                 onClick={handleSortByDueDate}
                 className={`px-4 py-2 ${sortByDueDate ? 'bg-pixel-purple' : 'bg-pixel-blue'} text-white rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm`}
                 title={sortByDueDate ? "Sorted by due date" : "Sort by due date"}
               >
-                <FiClock /> {sortByDueDate ? "Sorted by Date" : "Sort by Date"}
+                <FiClock /> {sortByDueDate ? "By Date" : "Sort Date"}
               </button>
             </div>
           </div>
@@ -427,7 +436,7 @@ export default function Todos() {
           {/* Current Friends List */}
           <div className="mb-6 space-y-2">
             {friends.length === 0 ? (
-              <p className="text-gray-500 font-pixel text-sm">You haven't added any friends yet.</p>
+              <p className="text-gray-500 font-pixel text-sm">You haven&apos;t added any friends yet.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {friends.map(friend => (
@@ -508,37 +517,30 @@ export default function Todos() {
 
             {/* Second Column - Toggle between Friends' Tasks and Completed Tasks */}
             <div className="flex-1 md:border-l-2 md:border-gray-200 md:pl-6">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
                 <h2 className="text-xl font-pixel text-pixel-blue">
                   {secondColumnView === 'friends' ? "Friends' Tasks" : "Finished Tasks"}
                 </h2>
-                <div className="relative">
-                  <select 
-                    value={secondColumnView}
-                    onChange={(e) => setSecondColumnView(e.target.value as 'friends' | 'completed')}
-                    className="appearance-none bg-white border-2 border-pixel-blue rounded-md px-4 py-2 pr-8 font-pixel text-pixel-blue shadow-pixel focus:outline-none focus:ring-2 focus:ring-pixel-purple focus:border-pixel-purple cursor-pointer transition-all hover:translate-y-[-2px]"
-                    style={{
-                      imageRendering: 'pixelated',
-                      boxShadow: '3px 3px 0 rgba(0, 0, 0, 0.2)',
-                      fontFamily: 'var(--font-pixel)'
-                    }}
-                  >
-                    <option value="friends" className="font-pixel" style={{ fontFamily: 'var(--font-pixel)' }}>☆ Friends' Tasks ☆</option>
-                    <option value="completed" className="font-pixel" style={{ fontFamily: 'var(--font-pixel)' }}>☆ Finished Tasks ☆</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-pixel-blue">
-                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                      <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                    </svg>
-                  </div>
-                </div>
+                
+                {/* Toggle Button (replaces dropdown) */}
+                <button
+                  onClick={toggleSecondColumnView}
+                  className="px-4 py-2 bg-pixel-pink border-2 border-pixel-purple text-pixel-purple font-pixel rounded-md shadow-pixel pixel-btn flex items-center gap-2 text-sm transition-all hover:bg-pixel-purple hover:text-white hover:translate-y-[-2px] active:translate-y-[0px] active:shadow-[1px_1px_0_rgba(0,0,0,0.2)]"
+                  style={{
+                    imageRendering: 'pixelated',
+                    boxShadow: '3px 3px 0 rgba(0, 0, 0, 0.2)',
+                  }}
+                >
+                  {secondColumnView === 'friends' ? <FiCheckSquare className="text-pixel-purple" /> : <FiUsers className="text-pixel-purple" />}
+                  {secondColumnView === 'friends' ? "Show Finished" : "Show Friends"}
+                </button>
               </div>
               
               {secondColumnView === 'friends' ? (
-                // Friends' Tasks View
+                // Friends' Tasks View - Now showing all friend tasks (including completed)
                 <div className="space-y-4">
                   {sortedFriendsTodos.length === 0 ? (
-                    <p className="text-gray-500 font-pixel text-center py-6">No friend tasks yet.</p>
+                    <p className="text-gray-500 font-pixel text-center py-6">No friend tasks found.</p>
                   ) : (
                     sortedFriendsTodos.map((todo) => (
                       <div
@@ -574,7 +576,7 @@ export default function Todos() {
                 // Completed Tasks View
                 <div className="space-y-4">
                   {sortedCompletedTodos.length === 0 ? (
-                    <p className="text-gray-500 font-pixel text-center py-6">No completed tasks yet.</p>
+                    <p className="text-gray-500 font-pixel text-center py-6">You haven&apos;t completed any tasks yet.</p>
                   ) : (
                     sortedCompletedTodos.map((todo) => (
                       <div

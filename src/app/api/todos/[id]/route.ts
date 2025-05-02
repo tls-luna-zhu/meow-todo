@@ -6,8 +6,11 @@ import { authOptions } from '../../auth/[...nextauth]/options';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
+  const id = params.id;
+  
   try {
     await connectDB();
     
@@ -19,7 +22,7 @@ export async function PATCH(
     const updates = await request.json();
 
     const todo = await Todo.findOne({
-      _id: params.id,
+      _id: id,
       user: session.user.id,
     });
 
@@ -52,8 +55,11 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
+  const id = params.id;
+  
   try {
     await connectDB();
     
@@ -63,7 +69,7 @@ export async function DELETE(
     }
 
     const todo = await Todo.findOneAndDelete({
-      _id: params.id,
+      _id: id,
       user: session.user.id,
     });
 
