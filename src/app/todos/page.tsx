@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { FiPlus, FiTrash2, FiCheck, FiUserPlus, FiLogOut, FiUsers, FiX, FiClock, FiEdit2, FiEye, FiEyeOff, FiCheckSquare } from 'react-icons/fi';
+import Image from 'next/image';
 
 interface Todo {
   _id: string;
@@ -36,7 +37,7 @@ export default function Todos() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [friends, setFriends] = useState<User[]>([]);
-  const [sortByDueDate, setSortByDueDate] = useState(false);
+  const [sortByDueDate, setSortByDueDate] = useState(true);
   const [hideCompletedUser, setHideCompletedUser] = useState(false);
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
   const [editFormData, setEditFormData] = useState({ title: '', description: '', dueDate: '' });
@@ -344,18 +345,41 @@ export default function Todos() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-pixel-pink flex items-center justify-center">
-        <div className="text-2xl font-pixel text-white">Loading...</div>
+      <div 
+        className="min-h-screen flex items-center justify-center"
+        style={{
+          background: 'linear-gradient(45deg, #ffb6c1 25%, #ffc1d0 25%, #ffc1d0 50%, #ffb6c1 50%, #ffb6c1 75%, #ffc1d0 75%, #ffc1d0)',
+          backgroundSize: '40px 40px',
+          imageRendering: 'pixelated'
+        }}
+      >
+        <div className="text-2xl font-pixel text-white px-4 py-3 bg-pixel-purple rounded-lg shadow-pixel">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-pixel-pink p-4">
+    <div 
+      className="min-h-screen p-4"
+      style={{
+        background: 'linear-gradient(45deg, #ffb6c1 25%, #ffc1d0 25%, #ffc1d0 50%, #ffb6c1 50%, #ffb6c1 75%, #ffc1d0 75%, #ffc1d0)',
+        backgroundSize: '40px 40px',
+        imageRendering: 'pixelated'
+      }}
+    >
       <div className="max-w-6xl mx-auto">
         <div className="bg-white rounded-lg shadow-pixel p-6 mb-6">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-pixel text-pixel-purple">My LunaTODO List</h1>
+            <h1 className="text-2xl font-pixel text-pixel-purple flex items-center gap-2">
+              <Image 
+                src="/favicon.svg" 
+                alt="LunaTODO Heart Favicon" 
+                width={24}
+                height={24}
+                style={{ imageRendering: 'pixelated' }}
+              />
+              My LunaTODO List
+            </h1>
             <button
               onClick={handleLogout}
               className="px-4 py-2 bg-red-500 text-white rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm"
