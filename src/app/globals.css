@@ -4,19 +4,41 @@
 
 :root {
   --foreground-rgb: 0, 0, 0;
-  --background-rgb: 255, 105, 180;
+  --background-rgb: 255, 105, 180; /* Default light mode pink */
+
+  /* Cappuccino dark mode colors as CSS variables */
+  --dark-brown-hex: #4A3B2A;
+  --light-brown-hex: #A07855;
+  --beige-hex: #D4B483;
+  --cream-hex: #F5EFE6;
+  --accent-pastel-blue-hex: #A2D2FF;
+  --accent-pastel-pink-hex: #FFC8DD;
+
+  /* RGB versions for use in `rgb()` if needed, though hex is fine with Tailwind utility classes */
+  --foreground-dark-rgb: 245, 239, 230; /* cream */
+  --background-dark-rgb: 74, 59, 42; /* dark-brown */
 }
 
 @layer base {
   html {
     font-family: var(--font-pixel), system-ui, sans-serif;
   }
-}
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background-color: rgb(var(--background-rgb));
-  image-rendering: pixelated;
+  body {
+    color: rgb(var(--foreground-rgb));
+    /* Default light mode gradient background - moved from layout.tsx */
+    background: linear-gradient(45deg, #ffb6c1 25%, #ffc1d0 25%, #ffc1d0 50%, #ffb6c1 50%, #ffb6c1 75%, #ffc1d0 75%, #ffc1d0);
+    background-size: 40px 40px;
+    image-rendering: pixelated;
+    min-height: 100vh; /* Ensure gradient covers full height */
+  }
+
+  html.dark body {
+    color: rgb(var(--foreground-dark-rgb));
+    background-color: rgb(var(--background-dark-rgb)); /* Dark mode background */
+    background-image: none; /* Ensure gradient is removed in dark mode */
+    min-height: 100vh;
+  }
 }
 
 /* Pixel art styling */
@@ -41,6 +63,11 @@ body {
 .shadow-pixel {
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.8);
   border: 2px solid #000;
+}
+
+.dark .shadow-pixel {
+  box-shadow: 4px 4px 0 var(--cream-hex); /* Lighter shadow for dark mode */
+  border-color: var(--light-brown-hex);
 }
 
 .pixel-btn {
@@ -75,24 +102,36 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.1); /* Default scrollbar track */
   border-radius: 4px;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--dark-brown-hex) 90%, transparent); /* Darker track */
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.2); /* Default scrollbar thumb */
   border-radius: 4px;
 }
 
+html.dark ::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--beige-hex) 50%, transparent); /* Beige thumb */
+}
+
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.3); /* Default scrollbar thumb hover */
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--beige-hex) 70%, transparent); /* Lighter beige thumb on hover */
 }
 
 /* Pixel art button styles */
 .pixel-button {
   position: relative;
   padding: 0.5rem 1rem;
-  background-color: #9370DB;
+  background-color: #9370DB; /* Default: pixel-purple */
   color: white;
   border: none;
   border-radius: 4px;
@@ -101,9 +140,19 @@ body {
   box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
 }
 
+.dark .pixel-button {
+  background-color: var(--accent-pastel-blue-hex);
+  color: var(--dark-brown-hex);
+  box-shadow: 4px 4px 0px 0px var(--cream-hex);
+}
+
 .pixel-button:hover {
   transform: translate(-1px, -1px);
   box-shadow: 5px 5px 0px 0px rgba(0, 0, 0, 1);
+}
+
+.dark .pixel-button:hover {
+  box-shadow: 5px 5px 0px 0px var(--cream-hex);
 }
 
 .pixel-button:active {
@@ -111,29 +160,61 @@ body {
   box-shadow: 1px 1px 0px 0px rgba(0, 0, 0, 1);
 }
 
+.dark .pixel-button:active {
+  box-shadow: 1px 1px 0px 0px var(--cream-hex);
+}
+
 /* Pixel art input styles */
 .pixel-input {
   padding: 0.5rem;
-  border: 2px solid #9370DB;
+  border: 2px solid #9370DB; /* Default: pixel-purple */
   border-radius: 4px;
   background-color: white;
+  color: black;
   transition: all 0.2s ease;
+}
+
+.dark .pixel-input {
+  background-color: var(--beige-hex);
+  border-color: var(--accent-pastel-blue-hex);
+  color: var(--dark-brown-hex);
+  placeholder-color: var(--light-brown-hex); /* For dark mode placeholder */
+}
+
+.dark .pixel-input::placeholder { /* Standard way to style placeholders */
+  color: var(--light-brown-hex);
+  opacity: 0.8; /* Ensure it's not too bright */
 }
 
 .pixel-input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(147, 112, 219, 0.2);
+  box-shadow: 0 0 0 2px rgba(147, 112, 219, 0.2); /* Default: pixel-purple focus */
+}
+
+.dark .pixel-input:focus {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-pastel-blue-hex) 20%, transparent);
 }
 
 /* Pixel art card styles */
 .pixel-card {
   background-color: white;
   border-radius: 8px;
+  border: 2px solid transparent; /* Maintain border width for consistency */
   box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
   transition: all 0.2s ease;
+}
+
+.dark .pixel-card {
+  background-color: var(--light-brown-hex);
+  border-color: var(--beige-hex); /* Add a subtle border for definition */
+  box-shadow: 4px 4px 0px 0px var(--cream-hex);
 }
 
 .pixel-card:hover {
   transform: translate(-2px, -2px);
   box-shadow: 6px 6px 0px 0px rgba(0, 0, 0, 1);
+}
+
+.dark .pixel-card:hover {
+  box-shadow: 6px 6px 0px 0px var(--cream-hex);
 }

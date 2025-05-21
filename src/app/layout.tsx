@@ -1,6 +1,8 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import ClientProvider from './components/ClientProvider';
+import { ThemeProvider } from './contexts/ThemeContext'; // Fixed path
+import ThemeSwitcher from './components/ThemeSwitcher';
 import { Press_Start_2P } from 'next/font/google';
 
 const pixelFont = Press_Start_2P({
@@ -25,18 +27,15 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/favicon.svg" />
       </head>
-      <body 
-        style={{
-          background: 'linear-gradient(45deg, #ffb6c1 25%, #ffc1d0 25%, #ffc1d0 50%, #ffb6c1 50%, #ffb6c1 75%, #ffc1d0 75%, #ffc1d0)',
-          backgroundSize: '40px 40px',
-          imageRendering: 'pixelated',
-          minHeight: '100vh',
-        }}
-        className="font-pixel"
-      >
-        <ClientProvider>
-          {children}
-        </ClientProvider>
+      <body className="font-pixel"> {/* Removed inline style */}
+        <ThemeProvider>
+          <ClientProvider>
+            {children}
+          </ClientProvider>
+          <div className="fixed top-4 right-4 z-50">
+            <ThemeSwitcher />
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -5,6 +5,7 @@ module.exports = {
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -12,6 +13,13 @@ module.exports = {
         'pixel-purple': '#9370DB',
         'pixel-blue': '#87CEEB',
         'pixel-green': '#98FB98',
+        // Cappuccino dark mode palette
+        'dark-brown': '#4A3B2A', // Background
+        'light-brown': '#A07855', // Card/Container background
+        'beige': '#D4B483',      // Card/Container background
+        'cream': '#F5EFE6',      // Text
+        'accent-pastel-blue': '#A2D2FF', // Accent
+        'accent-pastel-pink': '#FFC8DD', // Accent
       },
       fontFamily: {
         'pixel': ['Press Start 2P', 'cursive'],
