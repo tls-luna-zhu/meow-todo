@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import Cookies from 'js-cookie';
 import { FiPlus, FiTrash2, FiCheck, FiUserPlus, FiLogOut, FiUsers, FiX, FiClock, FiEdit2, FiEye, FiEyeOff, FiCheckSquare } from 'react-icons/fi';
 import Image from 'next/image';
 
@@ -42,27 +43,85 @@ export default function Todos() {
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
   const [editFormData, setEditFormData] = useState({ title: '', description: '', dueDate: '' });
   const [secondColumnView, setSecondColumnView] = useState<'friends' | 'completed'>('friends');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10); // Default items per page
+  const [totalTodos, setTotalTodos] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Load preferences from cookies on mount
+  useEffect(() => {
+    const savedItemsPerPage = Cookies.get('itemsPerPage');
+    const savedCurrentPage = Cookies.get('currentPage');
+
+    if (savedItemsPerPage) {
+      const parsedItemsPerPage = parseInt(savedItemsPerPage, 10);
+      if (!isNaN(parsedItemsPerPage) && [5, 10, 20].includes(parsedItemsPerPage)) {
+        setItemsPerPage(parsedItemsPerPage);
+      }
+    }
+    // Only set current page from cookie if itemsPerPage was also loaded,
+    // or if you want to preserve page number even if itemsPerPage defaults
+    if (savedCurrentPage && savedItemsPerPage) { 
+      const parsedCurrentPage = parseInt(savedCurrentPage, 10);
+      if (!isNaN(parsedCurrentPage) && parsedCurrentPage > 0) {
+        // We'll validate if parsedCurrentPage is valid after totalPages is known
+        // For now, just set it. fetchTodos will adjust if it's out of bounds.
+        setCurrentPage(parsedCurrentPage);
+      }
+    }
+  }, []); // Empty dependency array ensures this runs only on mount
+
+  // Save preferences to cookies when they change
+  useEffect(() => {
+    Cookies.set('itemsPerPage', String(itemsPerPage), { expires: 365 });
+  }, [itemsPerPage]);
+
+  useEffect(() => {
+    // Only save currentPage if totalPages is known and currentPage is valid
+    if (totalPages > 0 && currentPage <= totalPages) {
+      Cookies.set('currentPage', String(currentPage), { expires: 365 });
+    }
+  }, [currentPage, totalPages]);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/signin');
     } else if (status === 'authenticated') {
-      fetchTodos();
+      // Ensure currentPage is valid before fetching
+      if (totalPages > 0 && currentPage > totalPages) {
+        setCurrentPage(totalPages); // Adjust to last page if current is out of bounds
+        // This will trigger another re-fetch due to currentPage change, which is fine.
+      } else {
+        fetchTodos(currentPage, itemsPerPage);
+      }
       fetchFriends();
     }
-  }, [status, router]);
+  }, [status, router, currentPage, itemsPerPage, totalPages]); // Add totalPages
   
   // Removed automated hideCompleted setting when viewing Finished Tasks
   
   // Fetch the current user's todos and their friends' todos
-  const fetchTodos = async () => {
+  const fetchTodos = async (page: number, limit: number) => {
+    setLoading(true);
+    setError('');
     try {
-      const response = await fetch('/api/todos');
+      const response = await fetch(`/api/todos?page=${page}&limit=${limit}`);
       const data = await response.json();
       if (response.ok) {
-        setTodos(data);
+        setTodos(data.todos);
+        setTotalTodos(data.totalTodos);
+        const serverCurrentPage = data.currentPage;
+        const serverTotalPages = data.totalPages;
+        setTotalPages(serverTotalPages);
+
+        // Adjust currentPage if it's out of bounds (e.g., after itemsPerPage change)
+        if (serverCurrentPage > serverTotalPages && serverTotalPages > 0) {
+          setCurrentPage(serverTotalPages);
+        } else {
+          setCurrentPage(serverCurrentPage);
+        }
       } else {
-        setError(data.error);
+        setError(data.error || 'Failed to fetch todos');
       }
     } catch (err) {
       console.error('Failed to fetch todos:', err);
@@ -70,6 +129,27 @@ export default function Todos() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(prev => prev + 1);
+      // fetchTodos will be called by useEffect due to currentPage change
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+    }
+  };
+
+  const handleItemsPerPageChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    const newItemsPerPage = parseInt(e.target.value, 10);
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page when items per page changes
+    // Cookies will be updated by their respective useEffects
+    // fetchTodos will be called by the main useEffect due to itemsPerPage/currentPage change
   };
   
   const handleSortByDueDate = () => {
@@ -172,30 +252,75 @@ export default function Todos() {
 
   const handleAddTodo = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(''); // Clear previous errors
+
+    const tempId = `temp-${Date.now()}`;
+    const optimisticTodo: Todo = {
+      _id: tempId,
+      title: newTodo.title,
+      description: newTodo.description || undefined,
+      completed: false,
+      createdAt: new Date().toISOString(),
+      dueDate: newTodo.dueDate || undefined,
+      user: {
+        username: session?.user?.name || 'Unknown', // Use session data if available
+        _id: session?.user?.id 
+      },
+    };
+
+    // Optimistically update UI
+    setTodos(prevTodos => [optimisticTodo, ...prevTodos]);
+    const originalNewTodoState = { ...newTodo }; // Save for potential revert
+    setNewTodo({ title: '', description: '', dueDate: '' }); // Clear input fields
+
     try {
       const response = await fetch('/api/todos', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(newTodo),
+        body: JSON.stringify({ 
+          title: optimisticTodo.title, 
+          description: optimisticTodo.description,
+          dueDate: optimisticTodo.dueDate
+        }),
       });
 
+      const responseData = await response.json();
+
       if (response.ok) {
-        const todo = await response.json();
-        setTodos([todo, ...todos]);
-        setNewTodo({ title: '', description: '', dueDate: '' });
+        // Replace temporary todo with actual todo from server
+        setTodos(prevTodos =>
+          prevTodos.map(todo =>
+            todo._id === tempId ? { ...responseData, user: session?.user?.id ? { ...responseData.user, _id: session.user.id } : responseData.user } : todo
+          )
+        );
       } else {
-        const data = await response.json();
-        setError(data.error);
+        // Revert optimistic update
+        setTodos(prevTodos => prevTodos.filter(todo => todo._id !== tempId));
+        setNewTodo(originalNewTodoState); // Restore input fields
+        setError(responseData.error || 'Failed to add todo. Please try again.');
       }
     } catch (err) {
       console.error('Failed to add todo:', err);
-      setError('Failed to add todo');
+      // Revert optimistic update
+      setTodos(prevTodos => prevTodos.filter(todo => todo._id !== tempId));
+      setNewTodo(originalNewTodoState); // Restore input fields
+      setError('Failed to add todo. Please check your connection and try again.');
     }
   };
 
   const handleToggleTodo = async (todoId: string, completed: boolean) => {
+    setError(''); // Clear previous errors
+    const originalTodos = [...todos];
+    
+    // Optimistically update UI
+    setTodos(prevTodos =>
+      prevTodos.map(todo =>
+        todo._id === todoId ? { ...todo, completed } : todo
+      )
+    );
+
     try {
       const response = await fetch(`/api/todos/${todoId}`, {
         method: 'PATCH',
@@ -205,35 +330,45 @@ export default function Todos() {
         body: JSON.stringify({ completed }),
       });
 
-      if (response.ok) {
-        setTodos(todos.map(todo =>
-          todo._id === todoId ? { ...todo, completed } : todo
-        ));
-      } else {
+      if (!response.ok) {
+        // Revert optimistic update
+        setTodos(originalTodos);
         const data = await response.json();
-        setError(data.error);
+        setError(data.error || 'Failed to update todo. Please try again.');
       }
+      // On success, the optimistic update is already correct
     } catch (err) {
       console.error('Failed to update todo:', err);
-      setError('Failed to update todo');
+      // Revert optimistic update
+      setTodos(originalTodos);
+      setError('Failed to update todo. Please check your connection and try again.');
     }
   };
 
   const handleDeleteTodo = async (todoId: string) => {
+    setError(''); // Clear previous errors
+    const originalTodos = [...todos];
+
+    // Optimistically update UI
+    setTodos(prevTodos => prevTodos.filter(todo => todo._id !== todoId));
+
     try {
       const response = await fetch(`/api/todos/${todoId}`, {
         method: 'DELETE',
       });
 
-      if (response.ok) {
-        setTodos(todos.filter(todo => todo._id !== todoId));
-      } else {
+      if (!response.ok) {
+        // Revert optimistic update
+        setTodos(originalTodos);
         const data = await response.json();
-        setError(data.error);
+        setError(data.error || 'Failed to delete todo. Please try again.');
       }
+      // On success, the optimistic update is already correct
     } catch (err) {
       console.error('Failed to delete todo:', err);
-      setError('Failed to delete todo');
+      // Revert optimistic update
+      setTodos(originalTodos);
+      setError('Failed to delete todo. Please check your connection and try again.');
     }
   };
 
@@ -289,7 +424,7 @@ export default function Todos() {
       if (response.ok) {
         // Close the modal and refresh todos/friends
         setShowUserList(false);
-        fetchTodos();
+        fetchTodos(currentPage, itemsPerPage); // Refetch current page
         fetchFriends();
       } else {
         const data = await response.json();
@@ -310,7 +445,7 @@ export default function Todos() {
 
       if (response.ok) {
         fetchFriends();
-        fetchTodos();
+        fetchTodos(currentPage, itemsPerPage); // Refetch current page
       } else {
         const data = await response.json();
         setError(data.error);
@@ -440,6 +575,19 @@ export default function Todos() {
               </button>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <label htmlFor="itemsPerPageSelect" className="text-sm font-pixel text-gray-600">Show:</label>
+                <select
+                  id="itemsPerPageSelect"
+                  value={itemsPerPage}
+                  onChange={handleItemsPerPageChange}
+                  className="px-2 py-1 rounded-md border-2 border-gray-300 focus:border-pixel-purple focus:ring-pixel-purple shadow-pixel font-pixel text-sm"
+                >
+                  <option value="5">5</option>
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                </select>
+              </div>
               <button
                 onClick={handleToggleHideCompletedUser}
                 className={`px-4 py-2 ${hideCompletedUser ? 'bg-pixel-purple' : 'bg-gray-400'} text-white rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm`}
@@ -490,7 +638,7 @@ export default function Todos() {
             <div className="flex-1">
               <h2 className="text-xl font-pixel text-pixel-purple mb-4">My Tasks</h2>
               <div className="space-y-4">
-                {sortedUserTodos.length === 0 ? (
+                {sortedUserTodos.length === 0 && !loading ? (
                   <p className="text-gray-500 font-pixel text-center py-6">No todos yet. Add one above!</p>
                 ) : (
                   sortedUserTodos.map((todo) => (
@@ -537,6 +685,28 @@ export default function Todos() {
                   ))
                 )}
               </div>
+              {/* Pagination Controls for User's Todos */}
+              {totalPages > 1 && (
+                <div className="flex justify-between items-center mt-6">
+                  <button
+                    onClick={handlePreviousPage}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 bg-pixel-blue text-white rounded-md shadow-pixel pixel-btn font-pixel text-sm disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <span className="font-pixel text-sm">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={handleNextPage}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 bg-pixel-blue text-white rounded-md shadow-pixel pixel-btn font-pixel text-sm disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Second Column - Toggle between Friends' Tasks and Completed Tasks */}
