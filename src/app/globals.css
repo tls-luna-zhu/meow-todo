@@ -4,19 +4,40 @@
 
 :root {
   --foreground-rgb: 0, 0, 0;
-  --background-rgb: 255, 105, 180;
+  --background-rgb: 255, 105, 180; /* Default light mode pink */
+
+  /* New Dark Pastel Palette CSS variables */
+  --dark-lavender-hex: #5C4B99;
+  --dark-pastel-bg-alt-hex: #4A686A; /* Dark Teal */
+  --light-pastel-text-hex: #FFFACD; /* Light Creamy Yellow */
+  --pastel-accent-1-hex: #A2D2C8;   /* Soft Mint */
+  --pastel-accent-2-hex: #FFDAB9;   /* Soft Peach */
+
+  /* RGB versions for dark mode */
+  --foreground-dark-rgb: 255, 250, 205; /* light-pastel-text */
+  --background-dark-rgb: 92, 75, 153;   /* dark-lavender */
 }
 
 @layer base {
   html {
     font-family: var(--font-pixel), system-ui, sans-serif;
   }
-}
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background-color: rgb(var(--background-rgb));
-  image-rendering: pixelated;
+  body {
+    color: rgb(var(--foreground-rgb));
+    /* Default light mode gradient background - moved from layout.tsx */
+    background: linear-gradient(45deg, #ffb6c1 25%, #ffc1d0 25%, #ffc1d0 50%, #ffb6c1 50%, #ffb6c1 75%, #ffc1d0 75%, #ffc1d0);
+    background-size: 40px 40px;
+    image-rendering: pixelated;
+    min-height: 100vh; /* Ensure gradient covers full height */
+  }
+
+  html.dark body {
+    color: rgb(var(--foreground-dark-rgb));
+    background-color: rgb(var(--background-dark-rgb)); /* Dark mode background */
+    background-image: none; /* Ensure gradient is removed in dark mode */
+    min-height: 100vh;
+  }
 }
 
 /* Pixel art styling */
@@ -41,6 +62,11 @@ body {
 .shadow-pixel {
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.8);
   border: 2px solid #000;
+}
+
+.dark .shadow-pixel {
+  box-shadow: 4px 4px 0 var(--pastel-accent-2-hex); /* Soft Peach shadow */
+  border-color: var(--dark-pastel-bg-alt-hex); /* Dark Teal border */
 }
 
 .pixel-btn {
@@ -75,30 +101,48 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.1); /* Default scrollbar track */
   border-radius: 4px;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--dark-lavender-hex) 80%, transparent); /* Dark Lavender track */
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.2); /* Default scrollbar thumb */
   border-radius: 4px;
 }
 
+html.dark ::-webkit-scrollbar-thumb {
+  background: var(--pastel-accent-1-hex); /* Soft Mint thumb */
+}
+
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.3); /* Default scrollbar thumb hover */
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--pastel-accent-2-hex); /* Soft Peach thumb on hover */
 }
 
 /* Pixel art button styles */
 .pixel-button {
   position: relative;
   padding: 0.5rem 1rem;
-  background-color: #9370DB;
+  background-color: #9370DB; /* Default: pixel-purple */
   color: white;
-  border: none;
+  border: none; /* Using box-shadow for border effect */
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.1s ease;
   box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+}
+
+.dark .pixel-button {
+  background-color: var(--pastel-accent-1-hex);   /* Soft Mint */
+  color: var(--dark-lavender-hex);               /* Dark Lavender text for contrast */
+  box-shadow: 4px 4px 0px 0px var(--pastel-accent-2-hex); /* Soft Peach shadow */
 }
 
 .pixel-button:hover {
@@ -106,34 +150,74 @@ body {
   box-shadow: 5px 5px 0px 0px rgba(0, 0, 0, 1);
 }
 
+.dark .pixel-button:hover {
+  background-color: var(--pastel-accent-2-hex); /* Soft Peach on hover */
+  color: var(--dark-lavender-hex);
+  box-shadow: 5px 5px 0px 0px var(--pastel-accent-1-hex); /* Soft Mint shadow on hover */
+}
+
 .pixel-button:active {
   transform: translate(3px, 3px);
   box-shadow: 1px 1px 0px 0px rgba(0, 0, 0, 1);
 }
 
+.dark .pixel-button:active {
+  background-color: color-mix(in srgb, var(--pastel-accent-1-hex) 90%, black);
+  box-shadow: 1px 1px 0px 0px var(--pastel-accent-2-hex);
+}
+
 /* Pixel art input styles */
 .pixel-input {
   padding: 0.5rem;
-  border: 2px solid #9370DB;
+  border: 2px solid #9370DB; /* Default: pixel-purple */
   border-radius: 4px;
   background-color: white;
+  color: black;
   transition: all 0.2s ease;
+}
+
+.dark .pixel-input {
+  background-color: var(--dark-lavender-hex); /* Dark Lavender background */
+  border-color: var(--pastel-accent-1-hex);    /* Soft Mint border */
+  color: var(--light-pastel-text-hex);         /* Light Creamy Yellow text */
+}
+
+.dark .pixel-input::placeholder {
+  color: color-mix(in srgb, var(--light-pastel-text-hex) 70%, transparent); /* Dimmer text color for placeholder */
+  opacity: 1; /* Reset opacity if needed, color-mix handles transparency */
 }
 
 .pixel-input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(147, 112, 219, 0.2);
+  box-shadow: 0 0 0 2px rgba(147, 112, 219, 0.2); /* Default: pixel-purple focus */
+}
+
+.dark .pixel-input:focus {
+  border-color: var(--pastel-accent-2-hex); /* Soft Peach border on focus */
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pastel-accent-1-hex) 30%, transparent); /* Soft Mint shadow */
 }
 
 /* Pixel art card styles */
 .pixel-card {
   background-color: white;
   border-radius: 8px;
+  border: 2px solid transparent; /* Base border for consistent sizing */
   box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
   transition: all 0.2s ease;
+}
+
+.dark .pixel-card {
+  background-color: var(--dark-pastel-bg-alt-hex); /* Dark Teal */
+  border-color: var(--pastel-accent-1-hex);        /* Soft Mint border */
+  box-shadow: 4px 4px 0px 0px var(--pastel-accent-2-hex); /* Soft Peach shadow */
 }
 
 .pixel-card:hover {
   transform: translate(-2px, -2px);
   box-shadow: 6px 6px 0px 0px rgba(0, 0, 0, 1);
+}
+
+.dark .pixel-card:hover {
+  border-color: var(--pastel-accent-2-hex); /* Soft Peach border on hover */
+  box-shadow: 6px 6px 0px 0px var(--pastel-accent-1-hex); /* Soft Mint shadow on hover */
 }
