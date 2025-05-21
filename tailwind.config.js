@@ -13,13 +13,12 @@ module.exports = {
         'pixel-purple': '#9370DB',
         'pixel-blue': '#87CEEB',
         'pixel-green': '#98FB98',
-        // Cappuccino dark mode palette
-        'dark-brown': '#4A3B2A', // Background
-        'light-brown': '#A07855', // Card/Container background
-        'beige': '#D4B483',      // Card/Container background
-        'cream': '#F5EFE6',      // Text
-        'accent-pastel-blue': '#A2D2FF', // Accent
-        'accent-pastel-pink': '#FFC8DD', // Accent
+        // New Dark Pastel Palette
+        'dark-lavender': '#5C4B99',      // Main background
+        'dark-pastel-bg-alt': '#4A686A', // Card/container background (Dark Teal)
+        'light-pastel-text': '#FFFACD',   // Primary text (Light Creamy Yellow)
+        'pastel-accent-1': '#A2D2C8',     // Accent 1 (Soft Mint)
+        'pastel-accent-2': '#FFDAB9',     // Accent 2 (Soft Peach)
       },
       fontFamily: {
         'pixel': ['Press Start 2P', 'cursive'],

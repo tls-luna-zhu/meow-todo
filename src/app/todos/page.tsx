@@ -52,9 +52,6 @@ export default function Todos() {
     }
   }, [status, router]);
   
-  // Removed automated hideCompleted setting when viewing Finished Tasks
-  
-  // Fetch the current user's todos and their friends' todos
   const fetchTodos = async () => {
     try {
       const response = await fetch('/api/todos');
@@ -76,20 +73,16 @@ export default function Todos() {
     setSortByDueDate(!sortByDueDate);
   };
   
-  // Filter todos into user's todos, completed todos, and friends' todos
   const userTodos = todos.filter(todo => todo.user._id === session?.user?.id);
   const friendsTodos = todos.filter(todo => todo.user._id !== session?.user?.id);
   const completedTodos = userTodos.filter(todo => todo.completed);
   
-  // Apply hide completed filter ONLY to the user's todos, not to friends' todos
   const filteredUserTodos = hideCompletedUser 
     ? userTodos.filter(todo => !todo.completed) 
     : userTodos;
     
-  // Don't filter friends' todos by completion status
   const filteredFriendsTodos = friendsTodos;
   
-  // Sort user's todos
   const sortedUserTodos = [...filteredUserTodos].sort((a, b) => {
     if (sortByDueDate) {
       if (!a.dueDate && !b.dueDate) return 0;
@@ -100,7 +93,6 @@ export default function Todos() {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
   
-  // Sort friends' todos
   const sortedFriendsTodos = [...filteredFriendsTodos].sort((a, b) => {
     if (sortByDueDate) {
       if (!a.dueDate && !b.dueDate) return 0;
@@ -111,7 +103,6 @@ export default function Todos() {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
   
-  // Sort completed todos
   const sortedCompletedTodos = [...completedTodos].sort((a, b) => {
     if (sortByDueDate) {
       if (!a.dueDate && !b.dueDate) return 0;
@@ -126,20 +117,16 @@ export default function Todos() {
     setHideCompletedUser(!hideCompletedUser);
   };
 
-  // Toggle function for second column view
   const toggleSecondColumnView = () => {
     if (secondColumnView === 'friends') {
-      // Switching to Finished Tasks view, hide completed tasks
       setSecondColumnView('completed');
       setHideCompletedUser(true);
     } else {
-      // Switching to Friends' Tasks view, show completed tasks
       setSecondColumnView('friends');
       setHideCompletedUser(false);
     }
   };
 
-  // Fetch current friends
   const fetchFriends = async () => {
     try {
       const response = await fetch('/api/friends');
@@ -152,7 +139,6 @@ export default function Todos() {
     }
   };
 
-  // Fetch all registered users when the user list modal is opened
   const fetchAllUsers = async () => {
     try {
       setError('');
@@ -287,7 +273,6 @@ export default function Todos() {
       });
 
       if (response.ok) {
-        // Close the modal and refresh todos/friends
         setShowUserList(false);
         fetchTodos();
         fetchFriends();
@@ -345,22 +330,18 @@ export default function Todos() {
 
   if (loading) {
     return (
-      // 1. Remove inline gradient, 2. Refactor loading text bg/color
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-2xl font-pixel px-4 py-3 bg-pixel-purple text-white dark:bg-[var(--accent-pastel-blue-hex)] dark:text-[var(--dark-brown-hex)] rounded-lg shadow-pixel">Loading...</div>
+        <div className="text-2xl font-pixel px-4 py-3 bg-pixel-purple text-white dark:bg-[var(--pastel-accent-1-hex)] dark:text-[var(--dark-lavender-hex)] rounded-lg shadow-pixel">Loading...</div>
       </div>
     );
   }
 
   return (
-    // 1. Remove inline gradient
     <div className="min-h-screen p-4">
       <div className="max-w-6xl mx-auto">
-        {/* 2. Main Content Area: Use pixel-card like styling */}
-        <div className="bg-white dark:bg-[var(--light-brown-hex)] rounded-lg shadow-pixel p-6 mb-6 border-2 border-transparent dark:border-[var(--beige-hex)]">
+        <div className="pixel-card p-6 mb-6"> {/* Use pixel-card for main content area */}
           <div className="flex justify-between items-center mb-6">
-            {/* 2. Text Colors */}
-            <h1 className="text-2xl font-pixel text-pixel-purple dark:text-[var(--cream-hex)] flex items-center gap-2">
+            <h1 className="text-2xl font-pixel text-pixel-purple dark:text-[var(--light-pastel-text-hex)] flex items-center gap-2">
               <Image 
                 src="/favicon.svg" 
                 alt="LunaTODO Heart Favicon" 
@@ -370,10 +351,9 @@ export default function Todos() {
               />
               My LunaTODO List
             </h1>
-            {/* 3. Refactor Buttons */}
             <button
               onClick={handleLogout}
-              className="px-4 py-2 bg-red-500 text-white dark:bg-red-700 dark:text-gray-100 rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm"
+              className="px-4 py-2 bg-red-500 text-white dark:bg-red-500 dark:text-[var(--light-pastel-text-hex)] rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm"
             >
               <FiLogOut /> Logout
             </button>
@@ -381,13 +361,12 @@ export default function Todos() {
           
           <form onSubmit={handleAddTodo} className="space-y-4 mb-8">
             <div>
-              {/* 4. Refactor Inputs */}
               <input
                 type="text"
                 placeholder="What needs to be done?"
                 value={newTodo.title}
                 onChange={(e) => setNewTodo({ ...newTodo, title: e.target.value })}
-                className="w-full px-4 py-2 rounded-md font-pixel pixel-input" // Use pixel-input
+                className="w-full pixel-input font-pixel"
                 required
                 autoComplete="off"
                 autoCorrect="off"
@@ -400,7 +379,7 @@ export default function Todos() {
                 placeholder="Description (optional)"
                 value={newTodo.description}
                 onChange={(e) => setNewTodo({ ...newTodo, description: e.target.value })}
-                className="flex-1 px-4 py-2 rounded-md min-w-[200px] font-pixel pixel-input" // Use pixel-input
+                className="flex-1 pixel-input min-w-[200px] font-pixel"
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck="false"
@@ -409,10 +388,9 @@ export default function Todos() {
                 type="date"
                 value={newTodo.dueDate}
                 onChange={(e) => setNewTodo({ ...newTodo, dueDate: e.target.value })}
-                className="px-4 py-2 rounded-md font-pixel pixel-input" // Use pixel-input
+                className="pixel-input font-pixel"
                 autoComplete="off"
               />
-              {/* 3. Refactor Buttons - Use pixel-button class */}
               <button
                 type="submit"
                 className="pixel-button flex items-center gap-2 font-pixel text-sm whitespace-nowrap"
@@ -424,28 +402,25 @@ export default function Todos() {
 
           <div className="flex gap-4 mb-6 justify-between items-center flex-wrap">
             <div className="flex items-center gap-4">
-              {/* 2. Text Colors */}
-              <h2 className="text-xl font-pixel text-pixel-green dark:text-[var(--accent-pastel-pink-hex)]">Friends</h2>
-              {/* 3. Refactor Buttons */}
+              <h2 className="text-xl font-pixel text-pixel-green dark:text-[var(--pastel-accent-2-hex)]">Friends</h2>
               <button
                 onClick={handleOpenUserList}
-                className="px-4 py-2 bg-pixel-green text-white dark:bg-[var(--accent-pastel-pink-hex)] dark:text-[var(--dark-brown-hex)] rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm"
+                className="px-4 py-2 bg-pixel-green text-white dark:bg-[var(--pastel-accent-2-hex)] dark:text-[var(--dark-lavender-hex)] rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm"
               >
                 <FiUsers /> Find Friends
               </button>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              {/* 3. Refactor Buttons */}
               <button
                 onClick={handleToggleHideCompletedUser}
-                className={`px-4 py-2 ${hideCompletedUser ? 'bg-pixel-purple dark:bg-[var(--accent-pastel-blue-hex)] dark:text-[var(--dark-brown-hex)]' : 'bg-gray-400 dark:bg-gray-600 dark:text-gray-200'} text-white rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm`}
+                className={`px-4 py-2 ${hideCompletedUser ? 'bg-pixel-purple dark:bg-[var(--pastel-accent-1-hex)] dark:text-[var(--dark-lavender-hex)]' : 'bg-gray-400 dark:bg-gray-500 dark:text-[var(--light-pastel-text-hex)]'} text-white rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm`}
                 title={hideCompletedUser ? "Show completed tasks" : "Hide completed tasks"}
               >
                 {hideCompletedUser ? <FiEye /> : <FiEyeOff />} {hideCompletedUser ? "Show Done" : "Hide Done"}
               </button>
               <button
                 onClick={handleSortByDueDate}
-                className={`px-4 py-2 ${sortByDueDate ? 'bg-pixel-purple dark:bg-[var(--accent-pastel-blue-hex)] dark:text-[var(--dark-brown-hex)]' : 'bg-pixel-blue dark:bg-[var(--accent-pastel-pink-hex)] dark:text-[var(--dark-brown-hex)]'} text-white rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm`}
+                className={`px-4 py-2 ${sortByDueDate ? 'bg-pixel-purple dark:bg-[var(--pastel-accent-1-hex)] dark:text-[var(--dark-lavender-hex)]' : 'bg-pixel-blue dark:bg-[var(--pastel-accent-2-hex)] dark:text-[var(--dark-lavender-hex)]'} text-white rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm`}
                 title={sortByDueDate ? "Sorted by due date" : "Sort by due date"}
               >
                 <FiClock /> {sortByDueDate ? "By Date" : "Sort Date"}
@@ -453,16 +428,13 @@ export default function Todos() {
             </div>
           </div>
 
-          {/* Current Friends List */}
           <div className="mb-6 space-y-2">
             {friends.length === 0 ? (
-              // 2. Text Colors
-              <p className="text-gray-500 dark:text-gray-400 font-pixel text-sm">You haven&apos;t added any friends yet.</p>
+              <p className="text-gray-500 dark:text-opacity-80 dark:text-[var(--light-pastel-text-hex)] font-pixel text-sm">You haven&apos;t added any friends yet.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {friends.map(friend => (
-                  // 2. Text Colors, 3. Refactor Buttons
-                  <div key={friend._id} className="px-3 py-1 bg-pixel-green bg-opacity-20 dark:bg-opacity-30 dark:bg-[var(--accent-pastel-pink-hex)] rounded-full text-pixel-green dark:text-[var(--accent-pastel-pink-hex)] font-pixel text-xs flex items-center justify-between gap-2">
+                  <div key={friend._id} className="px-3 py-1 bg-pixel-green bg-opacity-20 dark:bg-[var(--pastel-accent-1-hex)] dark:bg-opacity-30 rounded-full text-pixel-green dark:text-[var(--dark-lavender-hex)] font-pixel text-xs flex items-center justify-between gap-2">
                     {friend.username}
                     <button
                       onClick={() => handleRemoveFriend(friend._id)}
@@ -470,8 +442,7 @@ export default function Todos() {
                       aria-label={`Remove ${friend.username}`}
                       title="Remove friend"
                     >
-                      {/* 5. Icons - color should be fine if button bg provides contrast */}
-                      <FiX size={12} className="text-white dark:text-gray-800" />
+                      <FiX size={12} className="text-white dark:text-[var(--light-pastel-text-hex)]" />
                     </button>
                   </div>
                 ))}
@@ -480,62 +451,52 @@ export default function Todos() {
           </div>
 
           {error && (
-            // 2. Text Colors
-            <div className="text-red-500 dark:text-red-400 mb-4 font-pixel text-sm">{error}</div>
+            <div className="text-red-500 dark:text-red-300 mb-4 font-pixel text-sm">{error}</div>
           )}
 
-          {/* Two-column layout for todos */}
           <div className="flex flex-col md:flex-row gap-6">
-            {/* User's Todos Column */}
             <div className="flex-1">
-              {/* 2. Text Colors */}
-              <h2 className="text-xl font-pixel text-pixel-purple dark:text-[var(--cream-hex)] mb-4">My Tasks</h2>
+              <h2 className="text-xl font-pixel text-pixel-purple dark:text-[var(--light-pastel-text-hex)] mb-4">My Tasks</h2>
               <div className="space-y-4">
                 {sortedUserTodos.length === 0 ? (
-                  // 2. Text Colors
-                  <p className="text-gray-500 dark:text-gray-400 font-pixel text-center py-6">No todos yet. Add one above!</p>
+                  <p className="text-gray-500 dark:text-opacity-80 dark:text-[var(--light-pastel-text-hex)] font-pixel text-center py-6">No todos yet. Add one above!</p>
                 ) : (
                   sortedUserTodos.map((todo) => (
-                    // 2. Refactor Static Backgrounds (Todo Items)
                     <div
                       key={todo._id}
-                      className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-[var(--beige-hex)] rounded-lg border-2 border-gray-200 dark:border-[var(--light-brown-hex)] shadow-pixel"
+                      className="pixel-card flex items-center gap-4 p-4" // Use pixel-card for todo items
                     >
-                      {/* 3. Refactor Buttons */}
                       <button
                         onClick={() => handleToggleTodo(todo._id, !todo.completed)}
                         className={`p-2 rounded-full ${
-                          todo.completed ? 'bg-pixel-green dark:bg-[var(--accent-pastel-blue-hex)]' : 'bg-gray-300 dark:bg-gray-500'
+                          todo.completed ? 'bg-pixel-green dark:bg-[var(--pastel-accent-1-hex)]' : 'bg-gray-300 dark:bg-gray-500'
                         } shadow-sm`}
                       >
-                        {/* 5. Icons */}
-                        <FiCheck className="text-white dark:text-[var(--dark-brown-hex)]" />
+                        <FiCheck className="text-white dark:text-[var(--dark-lavender-hex)]" />
                       </button>
                       <div className="flex-1">
-                        {/* 2. Text Colors */}
-                        <h3 className={`text-lg font-pixel ${todo.completed ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-800 dark:text-[var(--cream-hex)]'}`}>
+                        <h3 className={`text-lg font-pixel ${todo.completed ? 'line-through text-gray-500 dark:text-opacity-60 dark:text-[var(--light-pastel-text-hex)]' : 'text-gray-800 dark:text-[var(--light-pastel-text-hex)]'}`}>
                           {todo.title}
                         </h3>
                         {todo.description && (
-                          <p className="text-gray-600 dark:text-gray-300 text-sm font-pixel">{todo.description}</p>
+                          <p className="text-gray-600 dark:text-opacity-80 dark:text-[var(--light-pastel-text-hex)] text-sm font-pixel">{todo.description}</p>
                         )}
                         {todo.dueDate && (
-                          <p className="text-gray-500 dark:text-gray-400 text-sm font-pixel">
+                          <p className="text-gray-500 dark:text-opacity-70 dark:text-[var(--light-pastel-text-hex)] text-sm font-pixel">
                             Due: {new Date(todo.dueDate).toLocaleDateString()}
                           </p>
                         )}
                       </div>
                       <div className="flex">
-                        {/* 3. Refactor Buttons (Todo Item Action Buttons) */}
                         <button
                           onClick={() => handleEditTodo(todo)}
-                          className="p-2 text-blue-500 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-gray-700 rounded-full mr-1"
+                          className="p-2 text-blue-500 dark:text-[var(--pastel-accent-1-hex)] hover:bg-blue-100 dark:hover:bg-white dark:hover:bg-opacity-20 rounded-full mr-1"
                         >
                           <FiEdit2 />
                         </button>
                         <button
                           onClick={() => handleDeleteTodo(todo._id)}
-                          className="p-2 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-gray-700 rounded-full"
+                          className="p-2 text-red-500 dark:text-red-300 hover:bg-red-100 dark:hover:bg-white dark:hover:bg-opacity-20 rounded-full"
                         >
                           <FiTrash2 />
                         </button>
@@ -546,66 +507,52 @@ export default function Todos() {
               </div>
             </div>
 
-            {/* Second Column - Toggle between Friends' Tasks and Completed Tasks */}
-            {/* 2. Border colors */}
-            <div className="flex-1 md:border-l-2 md:border-gray-200 dark:md:border-[var(--light-brown-hex)] md:pl-6">
+            <div className="flex-1 md:border-l-2 md:border-gray-200 dark:md:border-[var(--pastel-accent-1-hex)] md:pl-6">
               <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-                {/* 2. Text Colors */}
-                <h2 className="text-xl font-pixel text-pixel-blue dark:text-[var(--accent-pastel-blue-hex)]">
+                <h2 className="text-xl font-pixel text-pixel-blue dark:text-[var(--pastel-accent-2-hex)]">
                   {secondColumnView === 'friends' ? "Friends' Tasks" : "Finished Tasks"}
                 </h2>
                 
-                {/* 3. Refactor Buttons (Toggle Second Column Button) */}
                 <button
                   onClick={toggleSecondColumnView}
-                  className="px-4 py-2 bg-pixel-pink border-2 border-pixel-purple text-pixel-purple dark:bg-[var(--accent-pastel-pink-hex)] dark:border-[var(--accent-pastel-blue-hex)] dark:text-[var(--dark-brown-hex)] font-pixel rounded-md shadow-pixel pixel-btn flex items-center gap-2 text-sm transition-all hover:bg-pixel-purple hover:text-white dark:hover:bg-[var(--accent-pastel-blue-hex)] dark:hover:text-white active:translate-y-[0px]"
+                  className="px-4 py-2 bg-pixel-pink border-2 border-pixel-purple text-pixel-purple dark:bg-[var(--pastel-accent-2-hex)] dark:border-[var(--pastel-accent-1-hex)] dark:text-[var(--dark-lavender-hex)] font-pixel rounded-md shadow-pixel pixel-btn flex items-center gap-2 text-sm transition-all hover:bg-pixel-purple hover:text-white dark:hover:bg-[var(--pastel-accent-1-hex)] dark:hover:text-[var(--dark-lavender-hex)] active:translate-y-[0px]"
                   style={{
-                    imageRendering: 'pixelated',
-                    // Using shadow-pixel class for base shadow, dark variant will apply.
-                    // Explicit box-shadow here might override or conflict. Let shadow-pixel handle it.
+                    imageRendering: 'pixelated', // Keep if desired for specific buttons
                   }}
                 >
-                  {/* 5. Icons - text color of parent button should handle this */}
                   {secondColumnView === 'friends' ? <FiCheckSquare /> : <FiUsers />}
                   {secondColumnView === 'friends' ? "Show Finished" : "Show Friends"}
                 </button>
               </div>
               
               {secondColumnView === 'friends' ? (
-                // Friends' Tasks View
                 <div className="space-y-4">
                   {sortedFriendsTodos.length === 0 ? (
-                    // 2. Text Colors
-                    <p className="text-gray-500 dark:text-gray-400 font-pixel text-center py-6">No friend tasks found.</p>
+                    <p className="text-gray-500 dark:text-opacity-80 dark:text-[var(--light-pastel-text-hex)] font-pixel text-center py-6">No friend tasks found.</p>
                   ) : (
                     sortedFriendsTodos.map((todo) => (
-                      // 2. Refactor Static Backgrounds (Todo Items)
                       <div
                         key={todo._id}
-                        className="flex items-center gap-4 p-4 bg-blue-50 dark:bg-[var(--beige-hex)] rounded-lg border-2 border-blue-100 dark:border-[var(--light-brown-hex)] shadow-pixel"
+                        className="pixel-card flex items-center gap-4 p-4" // Use pixel-card for friend's todo items
                       >
-                        {/* 3. Refactor Buttons */}
                         <div className={`p-2 rounded-full ${
-                          todo.completed ? 'bg-pixel-green dark:bg-[var(--accent-pastel-blue-hex)]' : 'bg-gray-300 dark:bg-gray-500'
+                          todo.completed ? 'bg-pixel-green dark:bg-[var(--pastel-accent-1-hex)]' : 'bg-gray-300 dark:bg-gray-500'
                         } shadow-sm`}>
-                          {/* 5. Icons */}
-                          <FiCheck className="text-white dark:text-[var(--dark-brown-hex)]" />
+                          <FiCheck className="text-white dark:text-[var(--dark-lavender-hex)]" />
                         </div>
                         <div className="flex-1">
-                          {/* 2. Text Colors */}
-                          <h3 className={`text-lg font-pixel ${todo.completed ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-800 dark:text-[var(--cream-hex)]'}`}>
+                          <h3 className={`text-lg font-pixel ${todo.completed ? 'line-through text-gray-500 dark:text-opacity-60 dark:text-[var(--light-pastel-text-hex)]' : 'text-gray-800 dark:text-[var(--light-pastel-text-hex)]'}`}>
                             {todo.title}
                           </h3>
                           {todo.description && (
-                            <p className="text-gray-600 dark:text-gray-300 text-sm font-pixel">{todo.description}</p>
+                            <p className="text-gray-600 dark:text-opacity-80 dark:text-[var(--light-pastel-text-hex)] text-sm font-pixel">{todo.description}</p>
                           )}
                           {todo.dueDate && (
-                            <p className="text-gray-500 dark:text-gray-400 text-sm font-pixel">
+                            <p className="text-gray-500 dark:text-opacity-70 dark:text-[var(--light-pastel-text-hex)] text-sm font-pixel">
                               Due: {new Date(todo.dueDate).toLocaleDateString()}
                             </p>
                           )}
-                          {/* 2. Text Colors */}
-                          <p className="text-blue-400 dark:text-blue-300 text-sm font-pixel">
+                          <p className="text-blue-400 dark:text-[var(--pastel-accent-2-hex)] text-sm font-pixel">
                             By: <span className="font-pixel">{todo.user.username}</span>
                           </p>
                         </div>
@@ -614,46 +561,38 @@ export default function Todos() {
                   )}
                 </div>
               ) : (
-                // Completed Tasks View
                 <div className="space-y-4">
                   {sortedCompletedTodos.length === 0 ? (
-                    // 2. Text Colors
-                    <p className="text-gray-500 dark:text-gray-400 font-pixel text-center py-6">You haven&apos;t completed any tasks yet.</p>
+                    <p className="text-gray-500 dark:text-opacity-80 dark:text-[var(--light-pastel-text-hex)] font-pixel text-center py-6">You haven&apos;t completed any tasks yet.</p>
                   ) : (
                     sortedCompletedTodos.map((todo) => (
-                      // 2. Refactor Static Backgrounds (Todo Items)
                       <div
                         key={todo._id}
-                        className="flex items-center gap-4 p-4 bg-green-50 dark:bg-[var(--beige-hex)] rounded-lg border-2 border-green-100 dark:border-[var(--light-brown-hex)] shadow-pixel"
+                        className="pixel-card flex items-center gap-4 p-4" // Use pixel-card for completed todo items
                       >
-                        {/* 3. Refactor Buttons */}
-                        <div className="p-2 rounded-full bg-pixel-green dark:bg-[var(--accent-pastel-blue-hex)] shadow-sm">
-                          {/* 5. Icons */}
-                          <FiCheck className="text-white dark:text-[var(--dark-brown-hex)]" />
+                        <div className="p-2 rounded-full bg-pixel-green dark:bg-[var(--pastel-accent-1-hex)] shadow-sm">
+                          <FiCheck className="text-white dark:text-[var(--dark-lavender-hex)]" />
                         </div>
                         <div className="flex-1">
-                          {/* 2. Text Colors */}
-                          <h3 className="text-lg font-pixel line-through text-gray-500 dark:text-gray-400">
+                          <h3 className="text-lg font-pixel line-through text-gray-500 dark:text-opacity-60 dark:text-[var(--light-pastel-text-hex)]">
                             {todo.title}
                           </h3>
                           {todo.description && (
-                            <p className="text-gray-600 dark:text-gray-300 text-sm font-pixel">{todo.description}</p>
+                            <p className="text-gray-600 dark:text-opacity-80 dark:text-[var(--light-pastel-text-hex)] text-sm font-pixel">{todo.description}</p>
                           )}
                           {todo.dueDate && (
-                            <p className="text-gray-500 dark:text-gray-400 text-sm font-pixel">
+                            <p className="text-gray-500 dark:text-opacity-70 dark:text-[var(--light-pastel-text-hex)] text-sm font-pixel">
                               Due: {new Date(todo.dueDate).toLocaleDateString()}
                             </p>
                           )}
-                          {/* 2. Text Colors */}
-                          <p className="text-green-500 dark:text-green-300 text-sm font-pixel">
+                          <p className="text-green-500 dark:text-[var(--pastel-accent-1-hex)] text-sm font-pixel">
                             Completed on: {new Date(todo.updatedAt || todo.createdAt).toLocaleDateString()}
                           </p>
                         </div>
                         <div className="flex">
-                          {/* 3. Refactor Buttons (Todo Item Action Buttons) */}
                           <button
                             onClick={() => handleDeleteTodo(todo._id)}
-                            className="p-2 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-gray-700 rounded-full"
+                            className="p-2 text-red-500 dark:text-red-300 hover:bg-red-100 dark:hover:bg-white dark:hover:bg-opacity-20 rounded-full"
                           >
                             <FiTrash2 />
                           </button>
@@ -671,14 +610,12 @@ export default function Todos() {
       {/* Edit Todo Modal */}
       {editingTodo && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          {/* 2. Refactor Static Backgrounds (Modals) */}
-          <div className="bg-white dark:bg-[var(--light-brown-hex)] rounded-lg shadow-pixel p-6 max-w-md w-full border-2 border-transparent dark:border-[var(--beige-hex)]">
+          <div className="pixel-card p-6 max-w-md w-full"> {/* Use pixel-card for modal */}
             <div className="flex justify-between items-center mb-4">
-              {/* 2. Text Colors */}
-              <h2 className="text-xl font-pixel text-pixel-purple dark:text-[var(--cream-hex)]">Edit Task</h2>
+              <h2 className="text-xl font-pixel text-pixel-purple dark:text-[var(--light-pastel-text-hex)]">Edit Task</h2>
               <button 
                 onClick={() => setEditingTodo(null)}
-                className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100"
+                className="text-gray-500 dark:text-[var(--light-pastel-text-hex)] hover:text-gray-700 dark:hover:text-opacity-80"
               >
                 <FiX size={24} />
               </button>
@@ -686,53 +623,46 @@ export default function Todos() {
             
             <form onSubmit={handleUpdateTodo} className="space-y-4">
               <div>
-                {/* 2. Text Colors */}
-                <label className="block text-sm font-pixel mb-1 text-gray-700 dark:text-gray-300">Title</label>
-                {/* 4. Refactor Inputs */}
+                <label className="block text-sm font-pixel mb-1 text-gray-700 dark:text-[var(--light-pastel-text-hex)] dark:text-opacity-80">Title</label>
                 <input
                   type="text"
                   value={editFormData.title}
                   onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
-                  className="w-full px-4 py-2 rounded-md font-pixel pixel-input"
+                  className="w-full pixel-input font-pixel"
                   required
                   autoComplete="off"
                 />
               </div>
               <div>
-                {/* 2. Text Colors */}
-                <label className="block text-sm font-pixel mb-1 text-gray-700 dark:text-gray-300">Description (optional)</label>
-                {/* 4. Refactor Inputs */}
+                <label className="block text-sm font-pixel mb-1 text-gray-700 dark:text-[var(--light-pastel-text-hex)] dark:text-opacity-80">Description (optional)</label>
                 <input
                   type="text"
                   value={editFormData.description}
                   onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
-                  className="w-full px-4 py-2 rounded-md font-pixel pixel-input"
+                  className="w-full pixel-input font-pixel"
                   autoComplete="off"
                 />
               </div>
               <div>
-                {/* 2. Text Colors */}
-                <label className="block text-sm font-pixel mb-1 text-gray-700 dark:text-gray-300">Due Date (optional)</label>
-                {/* 4. Refactor Inputs */}
+                <label className="block text-sm font-pixel mb-1 text-gray-700 dark:text-[var(--light-pastel-text-hex)] dark:text-opacity-80">Due Date (optional)</label>
                 <input
                   type="date"
                   value={editFormData.dueDate}
                   onChange={(e) => setEditFormData({ ...editFormData, dueDate: e.target.value })}
-                  className="w-full px-4 py-2 rounded-md font-pixel pixel-input"
+                  className="w-full pixel-input font-pixel"
                 />
               </div>
               <div className="flex justify-end gap-2 mt-6">
-                {/* 3. Refactor Buttons (Modal Buttons) */}
                 <button
                   type="button"
                   onClick={() => setEditingTodo(null)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 dark:bg-gray-600 dark:text-gray-200 rounded-md shadow-pixel pixel-btn font-pixel text-sm"
+                  className="px-4 py-2 bg-gray-300 text-gray-700 dark:bg-[var(--dark-pastel-bg-alt-hex)] dark:hover:bg-opacity-70 dark:text-[var(--light-pastel-text-hex)] dark:border-[var(--pastel-accent-1-hex)] border-2 rounded-md shadow-pixel pixel-btn font-pixel text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="pixel-button font-pixel text-sm" // Use pixel-button
+                  className="pixel-button font-pixel text-sm"
                 >
                   Save Changes
                 </button>
@@ -745,27 +675,24 @@ export default function Todos() {
       {/* Modal for showing all users */}
       {showUserList && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          {/* 2. Refactor Static Backgrounds (Modals) */}
-          <div className="bg-white dark:bg-[var(--light-brown-hex)] rounded-lg shadow-pixel p-6 max-w-md w-full max-h-[80vh] overflow-y-auto border-2 border-transparent dark:border-[var(--beige-hex)]">
+          <div className="pixel-card p-6 max-w-md w-full max-h-[80vh] overflow-y-auto"> {/* Use pixel-card for modal */}
             <div className="flex justify-between items-center mb-4">
-              {/* 2. Text Colors */}
-              <h2 className="text-xl font-pixel text-pixel-purple dark:text-[var(--cream-hex)]">Find Friends</h2>
+              <h2 className="text-xl font-pixel text-pixel-purple dark:text-[var(--light-pastel-text-hex)]">Find Friends</h2>
               <button 
                 onClick={() => setShowUserList(false)}
-                className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100"
+                className="text-gray-500 dark:text-[var(--light-pastel-text-hex)] hover:text-gray-700 dark:hover:text-opacity-80"
               >
                 <FiX size={24} />
               </button>
             </div>
             
             <div className="mb-4">
-              {/* 4. Refactor Inputs */}
               <input
                 type="text"
                 placeholder="Search users..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-4 py-2 rounded-md font-pixel pixel-input"
+                className="w-full pixel-input font-pixel"
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck="false"
@@ -773,35 +700,28 @@ export default function Todos() {
             </div>
             
             {error && (
-              // 2. Text Colors
-              <div className="text-red-500 dark:text-red-400 mb-4 font-pixel text-sm">{error}</div>
+              <div className="text-red-500 dark:text-red-300 mb-4 font-pixel text-sm">{error}</div>
             )}
             
             <div className="space-y-2">
               {filteredUsers.length === 0 ? (
-                // 2. Text Colors
-                <p className="text-gray-500 dark:text-gray-400 text-center py-4 font-pixel text-sm">No users found</p>
+                <p className="text-gray-500 dark:text-opacity-80 dark:text-[var(--light-pastel-text-hex)] text-center py-4 font-pixel text-sm">No users found</p>
               ) : (
                 filteredUsers.map(user => (
-                  // 2. Border colors
                   <div 
                     key={user._id} 
-                    className="flex justify-between items-center p-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+                    className="flex justify-between items-center p-3 border-b border-gray-200 dark:border-[var(--pastel-accent-1-hex)] dark:border-opacity-50 last:border-b-0"
                   >
-                    {/* 2. Text Colors */}
-                    <span className="font-pixel text-sm text-gray-800 dark:text-[var(--cream-hex)]">{user.username}</span>
+                    <span className="font-pixel text-sm text-gray-800 dark:text-[var(--light-pastel-text-hex)]">{user.username}</span>
                     
                     {isCurrentUser(user._id) ? (
-                      // 2. Text Colors
-                      <span className="text-xs text-gray-500 dark:text-gray-400 font-pixel">You</span>
+                      <span className="text-xs text-gray-500 dark:text-opacity-70 dark:text-[var(--light-pastel-text-hex)] font-pixel">You</span>
                     ) : isFriend(user._id) ? (
-                      // 2. Text Colors
-                      <span className="text-xs text-pixel-green dark:text-[var(--accent-pastel-pink-hex)] font-pixel">Already friends</span>
+                      <span className="text-xs text-pixel-green dark:text-[var(--pastel-accent-1-hex)] font-pixel">Already friends</span>
                     ) : (
-                      // 3. Refactor Buttons (Modal Buttons)
                       <button
                         onClick={() => handleAddFriend(user.username)}
-                        className="px-2 py-1 bg-pixel-green text-white dark:bg-[var(--accent-pastel-pink-hex)] dark:text-[var(--dark-brown-hex)] rounded-md text-xs font-pixel shadow-pixel pixel-btn flex items-center gap-1"
+                        className="px-2 py-1 bg-pixel-green text-white dark:bg-[var(--pastel-accent-2-hex)] dark:text-[var(--dark-lavender-hex)] rounded-md text-xs font-pixel shadow-pixel pixel-btn flex items-center gap-1"
                       >
                         <FiUserPlus size={12} /> Add
                       </button>
