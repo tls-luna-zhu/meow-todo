@@ -15,15 +15,17 @@ A cute pixel art themed todo list application with social features. Share your t
 
 - Next.js 14
 - TypeScript
-- MongoDB
+- PostgreSQL (Neon) with Prisma
 - NextAuth.js
 - Tailwind CSS
 - React Icons
 
+> **Note:** This project has been migrated from MongoDB to PostgreSQL (Neon). See [MIGRATION.md](MIGRATION.md) for details.
+
 ## Prerequisites
 
 - Node.js 18 or later
-- MongoDB database
+- PostgreSQL database (Neon recommended)
 - npm or yarn
 
 ## Getting Started
@@ -43,19 +45,28 @@ yarn install
 
 3. Create a `.env.local` file in the root directory with the following variables:
 ```env
-MONGODB_URI=your_mongodb_connection_string
+DATABASE_URL=your_neon_postgresql_connection_string
 NEXTAUTH_SECRET=your_nextauth_secret
 NEXTAUTH_URL=http://localhost:3000
 ```
 
-4. Run the development server:
+4. Generate Prisma client and run migrations:
+```bash
+npm run prisma:generate
+npm run prisma:migrate
+# or
+yarn prisma:generate
+yarn prisma:migrate
+```
+
+5. Run the development server:
 ```bash
 npm run dev
 # or
 yarn dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+6. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Deployment
 
@@ -64,7 +75,7 @@ yarn dev
 1. Push your code to GitHub
 2. Import your repository in Vercel
 3. Add the following environment variables in Vercel:
-   - `MONGODB_URI`
+   - `DATABASE_URL` (your Neon PostgreSQL connection string)
    - `NEXTAUTH_SECRET`
    - `NEXTAUTH_URL` (your Vercel deployment URL)
 

@@ -6,16 +6,25 @@
     "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "migrate": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/migrate-mongo-to-postgres.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "use:postgres": "bash scripts/switch-to-postgres.sh",
+    "use:mongodb": "bash scripts/switch-to-mongodb.sh",
+    "postinstall": "prisma generate",
+    "vercel-build": "prisma migrate deploy && next build"
   },
   "dependencies": {
     "@heroicons/react": "^2.1.1",
+    "@prisma/client": "^6.8.2",
     "autoprefixer": "^10.4.21",
     "bcryptjs": "^2.4.3",
     "mongodb": "^6.3.0",
     "mongoose": "^8.1.1",
     "next": "^15.3.1",
     "next-auth": "^4.24.5",
+    "pg": "^8.16.0",
     "postcss": "^8.5.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -29,6 +38,8 @@
     "@types/react-dom": "^18.2.18",
     "eslint": "^8.56.0",
     "eslint-config-next": "15.2.3",
+    "prisma": "^6.8.2",
+    "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   }
 }
