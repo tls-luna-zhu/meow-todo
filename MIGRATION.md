@@ -113,13 +113,16 @@ The application is configured for easy deployment to Vercel:
 The package.json includes these scripts for Vercel deployment:
 ```json
 "postinstall": "prisma generate",
-"vercel-build": "prisma migrate deploy && next build"
+"vercel-build": "prisma migrate deploy && bash scripts/switch-to-postgres.sh && next build"
 ```
 
 These scripts will automatically:
 1. Generate the Prisma client during installation
 2. Run database migrations during the build process
-3. Build the Next.js application
+3. Switch the application to use PostgreSQL
+4. Build the Next.js application
+
+**Note:** The application will automatically use PostgreSQL on Vercel without any additional steps. You don't need to manually run the switch script.
 
 ## Troubleshooting
 
