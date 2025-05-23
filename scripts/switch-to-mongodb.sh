@@ -32,5 +32,12 @@ if [ -f "src/app/api/auth/signup/route.ts" ] && [ -f "src/app/api/auth/signup/mo
   echo "✅ Updated signup API route"
 fi
 
+# Replace Prisma friends API with MongoDB friends API
+if [ -f "src/app/api/friends/route.ts" ] && [ -f "src/app/api/friends/mongodb-route.ts" ]; then
+  mv src/app/api/friends/route.ts src/app/api/friends/prisma-route.ts
+  cp src/app/api/friends/mongodb-route.ts src/app/api/friends/route.ts
+  echo "✅ Updated friends API route"
+fi
+
 echo "Migration back to MongoDB completed!"
 echo "Make sure to update your .env file with the correct MONGODB_URI for your MongoDB database."

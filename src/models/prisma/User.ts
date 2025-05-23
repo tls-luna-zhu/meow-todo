@@ -17,15 +17,23 @@ export async function findUserById(id: string) {
 }
 
 export async function createUser(data: { username: string; email: string; password: string }) {
-  const hashedPassword = await bcrypt.hash(data.password, 10);
-  
-  return prisma.user.create({
-    data: {
-      username: data.username,
-      email: data.email,
-      password: hashedPassword,
-    },
-  });
+  try {
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    
+    const user = await prisma.user.create({
+      data: {
+        username: data.username,
+        email: data.email,
+        password: hashedPassword,
+      },
+    });
+    
+    console.log('User created successfully:', user.id);
+    return user;
+  } catch (error) {
+    console.error('Error creating user in Prisma:', error);
+    throw error;
+  }
 }
 
 export async function validatePassword(user: { password: string }, inputPassword: string) {
