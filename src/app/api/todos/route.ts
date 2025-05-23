@@ -5,7 +5,7 @@ import Todo from '@/models/Todo';
 import User from '@/models/User';
 import { authOptions } from '../auth/[...nextauth]/options';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     
@@ -15,6 +15,11 @@ export async function GET() {
 
     await connectDB();
 
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '10', 10); // Default limit to 10
+    const skip = (page - 1) * limit;
+
     // Get the current user and their friends
     const user = await User.findById(session.user.id).populate('friends');
     if (!user) {
@@ -22,13 +27,28 @@ export async function GET() {
     }
     
     const friendIds = user.friends ? user.friends.map((friend: any) => friend._id) : [];
+    const userAndFriendIds = [session.user.id, ...friendIds];
 
-    // Get todos from the current user and their friends
+    // Get todos from the current user and their friends with pagination
     const todos = await Todo.find({
-      user: { $in: [session.user.id, ...friendIds] }
-    }).populate('user', 'username').sort({ createdAt: -1 });
+      user: { $in: userAndFriendIds }
+    })
+    .populate('user', 'username')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
 
-    return NextResponse.json(todos);
+    // Get total count for pagination
+    const totalCount = await Todo.countDocuments({
+      user: { $in: userAndFriendIds }
+    });
+
+    return NextResponse.json({
+      todos,
+      totalCount,
+      currentPage: page,
+      totalPages: Math.ceil(totalCount / limit),
+    });
   } catch (error) {
     console.error('Error fetching todos:', error);
     return NextResponse.json(
