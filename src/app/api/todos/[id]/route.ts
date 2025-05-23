@@ -7,7 +7,8 @@ export async function PATCH(
   request: NextRequest,
   context: { params: { id: string } }
 ) {
-  const id = context.params.id;
+  const { params } = context;
+  const id = params.id;
   
   try {
     const session = await getServerSession(authOptions);
@@ -49,7 +50,8 @@ export async function DELETE(
   request: NextRequest,
   context: { params: { id: string } }
 ) {
-  const id = context.params.id;
+  const { params } = context;
+  const id = params.id;
   
   try {
     const session = await getServerSession(authOptions);
