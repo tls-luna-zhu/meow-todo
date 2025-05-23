@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/prisma-options';
+import { authOptions } from '../auth/[...nextauth]/options';
 import { findUserById } from '@/models/prisma/User';
 import { getUserAndFriendsTodos, createTodo } from '@/models/prisma/Todo';
 

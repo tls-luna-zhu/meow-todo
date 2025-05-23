@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/prisma-options';
+import { authOptions } from '../../auth/[...nextauth]/options';
 import { findTodoByIdAndUserId, updateTodo, deleteTodo } from '@/models/prisma/Todo';
 
 export async function PATCH(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
-  const { params } = context;
   const id = params.id;
   
   try {
@@ -48,9 +47,8 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
-  const { params } = context;
   const id = params.id;
   
   try {
