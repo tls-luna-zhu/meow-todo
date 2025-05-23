@@ -39,7 +39,26 @@ if [ -f "src/app/api/friends/route.ts" ] && [ -f "src/app/api/friends/prisma-rou
   echo "✅ Updated friends API route"
 fi
 
+# Ensure .env and .env.local have the correct DATABASE_URL
+if [ -f ".env" ]; then
+  # Check if DATABASE_URL is already set to PostgreSQL
+  if ! grep -q "postgresql://" .env; then
+    echo 'DATABASE_URL="postgresql://neondb_owner:npg_sk1dUfvE2qNC@ep-blue-sun-a1zkzapv-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"' > .env
+    echo "✅ Updated .env with PostgreSQL connection string"
+  fi
+fi
+
+if [ -f ".env.local" ]; then
+  # Check if DATABASE_URL is already set to PostgreSQL
+  if ! grep -q "postgresql://" .env.local; then
+    echo 'DATABASE_URL="postgresql://neondb_owner:npg_sk1dUfvE2qNC@ep-blue-sun-a1zkzapv-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"' > .env.local
+    echo "✅ Updated .env.local with PostgreSQL connection string"
+  fi
+fi
+
+# Generate Prisma client
+npx prisma generate
+
 echo "Migration to PostgreSQL completed!"
-echo "Make sure to update your .env file with the correct DATABASE_URL for your Neon PostgreSQL database."
-echo "Run 'npm run prisma:generate' and 'npm run prisma:migrate' to set up your database schema."
+echo "Database URL has been set to use Neon PostgreSQL."
 echo "If you need to migrate data from MongoDB, run 'npm run migrate'."
