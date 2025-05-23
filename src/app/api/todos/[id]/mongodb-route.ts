@@ -3,8 +3,10 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/options';
 import { findTodoByIdAndUserId, updateTodo, deleteTodo } from '@/models/prisma/Todo';
 
-// Using a simpler version without type annotations to avoid build errors
-export async function PATCH(request, { params }) {
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   const id = params.id;
   
   try {
@@ -43,8 +45,10 @@ export async function PATCH(request, { params }) {
   }
 }
 
-// Using a simpler version without type annotations to avoid build errors
-export async function DELETE(request, { params }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   const id = params.id;
   
   try {
