@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { prisma } from '@/lib/prisma';
+import connectDB from '@/lib/db';
+import User from '@/models/User';
 import { authOptions } from '../auth/[...nextauth]/options';
 
 export async function GET() {
@@ -11,13 +12,13 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    await connectDB();
+
     // Get all users except the current user's sensitive information
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        username: true,
-        // Exclude sensitive fields like password and email
-      },
+    const users = await User.find({}, {
+      _id: 1,
+      username: 1,
+      // Exclude sensitive fields like password and email
     });
 
     return NextResponse.json(users);
