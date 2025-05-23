@@ -5,9 +5,9 @@ import { findTodoByIdAndUserId, updateTodo, deleteTodo } from '@/models/prisma/T
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
-  const id = params.id;
+  const id = context.params.id;
   
   try {
     const session = await getServerSession(authOptions);
@@ -47,9 +47,9 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
-  const id = params.id;
+  const id = context.params.id;
   
   try {
     const session = await getServerSession(authOptions);
