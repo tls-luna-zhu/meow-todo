@@ -1,6 +1,7 @@
-'use client';
-
 import { useState, useEffect } from 'react';
+import type { GetServerSideProps, InferGetServerSidePropsType } from 'next';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../api/auth/[...nextauth]/options';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { FiPlus, FiTrash2, FiCheck, FiUserPlus, FiLogOut, FiUsers, FiX, FiClock, FiEdit2, FiEye, FiEyeOff, FiCheckSquare } from 'react-icons/fi';
@@ -26,59 +27,231 @@ interface User {
   email?: string;
 }
 
-export default function Todos() {
+export const getServerSideProps: GetServerSideProps<{
+  initialTodos: Todo[];
+  initialFriends: User[];
+  currentUser: User | null;
+  initialSortByDueDate: boolean;
+  initialHideCompletedUser: boolean;
+}> = async (context) => {
+  const session = await getServerSession(context.req, context.res, authOptions);
+
+  if (!session) {
+    return {
+      redirect: {
+        destination: '/auth/signin',
+        permanent: false,
+      },
+    };
+  }
+
+  // TODO: Replace with direct database calls or service layer calls if possible
+  // For now, using absolute URLs for API calls
+  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+
+  let initialTodos: Todo[] = [];
+  let initialFriends: User[] = [];
+
+  try {
+    const todosResponse = await fetch(`${baseUrl}/api/todos`, {
+      headers: {
+        cookie: context.req.headers.cookie || '', // Forward cookies
+      },
+    });
+    if (todosResponse.ok) {
+      initialTodos = await todosResponse.json();
+    } else {
+      console.error('Failed to fetch todos SSR:', await todosResponse.text());
+    }
+  } catch (err) {
+    console.error('Error fetching todos SSR:', err);
+  }
+
+  try {
+    const friendsResponse = await fetch(`${baseUrl}/api/friends`, {
+      headers: {
+        cookie: context.req.headers.cookie || '', // Forward cookies
+      },
+    });
+    if (friendsResponse.ok) {
+      initialFriends = await friendsResponse.json();
+    } else {
+      console.error('Failed to fetch friends SSR:', await friendsResponse.text());
+    }
+  } catch (err) {
+    console.error('Error fetching friends SSR:', err);
+  }
+  
+  const currentUser = session.user ? {
+    _id: session.user.id,
+    username: session.user.name || '',
+    email: session.user.email || '',
+  } : null;
+
+  // Get user preferences from cookies
+  const cookies = context.req.cookies;
+  const initialSortByDueDateCookie = cookies['preference_sortByDueDate'];
+  const initialHideCompletedUserCookie = cookies['preference_hideCompletedUser'];
+
+  // Default preferences if cookies are not set or invalid
+  const initialSortByDueDate = initialSortByDueDateCookie ? initialSortByDueDateCookie === 'true' : true;
+  const initialHideCompletedUser = initialHideCompletedUserCookie ? initialHideCompletedUserCookie === 'true' : false;
+
+  return {
+    props: {
+      initialTodos,
+      initialFriends,
+      currentUser,
+      initialSortByDueDate,
+      initialHideCompletedUser,
+    },
+  };
+};
+
+export default function Todos({ 
+  initialTodos, 
+  initialFriends, 
+  currentUser, 
+  initialSortByDueDate,
+  initialHideCompletedUser 
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [todos, setTodos] = useState<Todo[]>([]);
+  const [todos, setTodos] = useState<Todo[]>(initialTodos);
   const [newTodo, setNewTodo] = useState({ title: '', description: '', dueDate: '' });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Initial data is loaded by SSR
   const [error, setError] = useState('');
   const [showUserList, setShowUserList] = useState(false);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [friends, setFriends] = useState<User[]>([]);
-  const [sortByDueDate, setSortByDueDate] = useState(true);
-  const [hideCompletedUser, setHideCompletedUser] = useState(false);
+  const [friends, setFriends] = useState<User[]>(initialFriends);
+  const [sortByDueDate, setSortByDueDate] = useState(initialSortByDueDate);
+  const [hideCompletedUser, setHideCompletedUser] = useState(initialHideCompletedUser);
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
   const [editFormData, setEditFormData] = useState({ title: '', description: '', dueDate: '' });
   const [secondColumnView, setSecondColumnView] = useState<'friends' | 'completed'>('friends');
+
+  // --- Client-side Cache Configuration ---
+  const CACHE_KEY_TODOS = 'LUNATODO_CACHED_TODOS';
+  const CACHE_KEY_FRIENDS = 'LUNATODO_CACHED_FRIENDS';
+  const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+
+  const setCachedData = (key: string, data: any) => {
+    if (typeof window !== 'undefined') {
+      try {
+        const item = {
+          timestamp: Date.now(),
+          data: data,
+        };
+        localStorage.setItem(key, JSON.stringify(item));
+      } catch (e) {
+        console.error(`Error setting cache for ${key}:`, e);
+      }
+    }
+  };
+
+  const getCachedData = (key: string) => {
+    if (typeof window !== 'undefined') {
+      try {
+        const itemStr = localStorage.getItem(key);
+        if (!itemStr) return null;
+        const item = JSON.parse(itemStr);
+        if (Date.now() - item.timestamp > CACHE_DURATION_MS) {
+          localStorage.removeItem(key); // Cache expired
+          return null;
+        }
+        return item.data;
+      } catch (e) {
+        console.error(`Error getting cache for ${key}:`, e);
+        localStorage.removeItem(key); // Remove corrupted item
+        return null;
+      }
+    }
+    return null;
+  };
+  // --- End Cache Configuration ---
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/signin');
     } else if (status === 'authenticated') {
-      fetchTodos();
-      fetchFriends();
+      // Attempt to load from cache first, then use SSR data if cache is stale/empty
+      // And ensure SSR data is cached if used.
+      const cachedTodos = getCachedData(CACHE_KEY_TODOS);
+      if (cachedTodos) {
+        setTodos(cachedTodos);
+      } else if (initialTodos) {
+        setTodos(initialTodos); // Ensure state is set if cache miss and SSR data exists
+        setCachedData(CACHE_KEY_TODOS, initialTodos);
+      }
+
+      const cachedFriends = getCachedData(CACHE_KEY_FRIENDS);
+      if (cachedFriends) {
+        setFriends(cachedFriends);
+      } else if (initialFriends) {
+        setFriends(initialFriends); // Ensure state is set
+        setCachedData(CACHE_KEY_FRIENDS, initialFriends);
+      }
     }
-  }, [status, router]);
-  
-  // Removed automated hideCompleted setting when viewing Finished Tasks
-  
-  // Fetch the current user's todos and their friends' todos
-  const fetchTodos = async () => {
+  }, [status, router, initialTodos, initialFriends]);
+
+  // Function to refresh todos from the server
+  const fetchTodosFromServer = async () => {
+    setLoading(true);
     try {
-      const response = await fetch('/api/todos');
+      const response = await fetch('/api/todos'); // This fetches page 1 by default
       const data = await response.json();
       if (response.ok) {
-        setTodos(data);
+        // API returns { todos: [], totalCount, currentPage, totalPages }
+        setTodos(data.todos); 
+        setCachedData(CACHE_KEY_TODOS, data.todos);
       } else {
-        setError(data.error);
+        setError(data.error || 'Failed to refresh todos');
       }
     } catch (err) {
-      console.error('Failed to fetch todos:', err);
-      setError('Failed to fetch todos');
+      console.error('Failed to refresh todos:', err);
+      setError('Failed to refresh todos');
     } finally {
       setLoading(false);
     }
   };
+
+  // Function to refresh friends from the server
+  const fetchFriendsFromServer = async () => {
+    try {
+      const response = await fetch('/api/friends');
+      if (response.ok) {
+        const data = await response.json(); // Friends API returns an array
+        setFriends(data);
+        setCachedData(CACHE_KEY_FRIENDS, data);
+      } else {
+        console.error('Failed to refresh friends:', await response.json());
+      }
+    } catch (err) {
+      console.error('Error refreshing friends:', err);
+    }
+  };
   
-  const handleSortByDueDate = () => {
-    setSortByDueDate(!sortByDueDate);
+  const handleSortByDueDate = async () => {
+    const newSortByDueDate = !sortByDueDate;
+    setSortByDueDate(newSortByDueDate);
+    try {
+      await fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sortByDueDate: newSortByDueDate }),
+      });
+    } catch (err) {
+      console.error('Failed to save sort preference:', err);
+      // Optionally, display an error to the user or revert the state
+    }
   };
   
   // Filter todos into user's todos, completed todos, and friends' todos
-  const userTodos = todos.filter(todo => todo.user._id === session?.user?.id);
-  const friendsTodos = todos.filter(todo => todo.user._id !== session?.user?.id);
+  // Use currentUser from props for SSR consistency, fallback to session for client-side updates
+  const currentUserId = currentUser?._id || session?.user?.id;
+  const userTodos = todos.filter(todo => todo.user._id === currentUserId);
+  const friendsTodos = todos.filter(todo => todo.user._id !== currentUserId);
   const completedTodos = userTodos.filter(todo => todo.completed);
   
   // Apply hide completed filter ONLY to the user's todos, not to friends' todos
@@ -122,8 +295,19 @@ export default function Todos() {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
-  const handleToggleHideCompletedUser = () => {
-    setHideCompletedUser(!hideCompletedUser);
+  const handleToggleHideCompletedUser = async () => {
+    const newHideCompletedUser = !hideCompletedUser;
+    setHideCompletedUser(newHideCompletedUser);
+    try {
+      await fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hideCompletedUser: newHideCompletedUser }),
+      });
+    } catch (err) {
+      console.error('Failed to save hide completed preference:', err);
+      // Optionally, display an error to the user or revert the state
+    }
   };
 
   // Toggle function for second column view
@@ -136,19 +320,6 @@ export default function Todos() {
       // Switching to Friends' Tasks view, show completed tasks
       setSecondColumnView('friends');
       setHideCompletedUser(false);
-    }
-  };
-
-  // Fetch current friends
-  const fetchFriends = async () => {
-    try {
-      const response = await fetch('/api/friends');
-      if (response.ok) {
-        const data = await response.json();
-        setFriends(data);
-      }
-    } catch (err) {
-      console.error('Error fetching friends:', err);
     }
   };
 
@@ -182,8 +353,10 @@ export default function Todos() {
       });
 
       if (response.ok) {
-        const todo = await response.json();
-        setTodos([todo, ...todos]);
+        const todo = await response.json(); // API returns the single created todo
+        const updatedTodos = [todo, ...todos];
+        setTodos(updatedTodos);
+        setCachedData(CACHE_KEY_TODOS, updatedTodos);
         setNewTodo({ title: '', description: '', dueDate: '' });
       } else {
         const data = await response.json();
@@ -206,9 +379,12 @@ export default function Todos() {
       });
 
       if (response.ok) {
-        setTodos(todos.map(todo =>
-          todo._id === todoId ? { ...todo, completed } : todo
-        ));
+        const updatedTodo = await response.json(); // API returns the updated todo
+        const updatedTodos = todos.map(t =>
+          t._id === todoId ? updatedTodo : t
+        );
+        setTodos(updatedTodos);
+        setCachedData(CACHE_KEY_TODOS, updatedTodos);
       } else {
         const data = await response.json();
         setError(data.error);
@@ -226,7 +402,9 @@ export default function Todos() {
       });
 
       if (response.ok) {
-        setTodos(todos.filter(todo => todo._id !== todoId));
+        const updatedTodos = todos.filter(todo => todo._id !== todoId);
+        setTodos(updatedTodos);
+        setCachedData(CACHE_KEY_TODOS, updatedTodos);
       } else {
         const data = await response.json();
         setError(data.error);
@@ -260,10 +438,12 @@ export default function Todos() {
       });
 
       if (response.ok) {
-        const updatedTodo = await response.json();
-        setTodos(todos.map(todo =>
-          todo._id === editingTodo._id ? updatedTodo : todo
-        ));
+        const updatedTodoData = await response.json(); // API returns the updated todo
+        const updatedTodos = todos.map(todo =>
+          todo._id === editingTodo._id ? updatedTodoData : todo
+        );
+        setTodos(updatedTodos);
+        setCachedData(CACHE_KEY_TODOS, updatedTodos);
         setEditingTodo(null);
       } else {
         const data = await response.json();
@@ -289,8 +469,8 @@ export default function Todos() {
       if (response.ok) {
         // Close the modal and refresh todos/friends
         setShowUserList(false);
-        fetchTodos();
-        fetchFriends();
+        fetchTodosFromServer(); // Refresh todos as new friend's tasks might be visible
+        fetchFriendsFromServer(); // Refresh friend list
       } else {
         const data = await response.json();
         setError(data.error);
@@ -309,8 +489,8 @@ export default function Todos() {
       });
 
       if (response.ok) {
-        fetchFriends();
-        fetchTodos();
+        fetchFriendsFromServer(); // Refresh friend list
+        fetchTodosFromServer(); // Refresh todos as a friend's tasks might be removed
       } else {
         const data = await response.json();
         setError(data.error);
@@ -336,14 +516,15 @@ export default function Todos() {
   };
 
   const isCurrentUser = (userId: string) => {
-    return session?.user?.id === userId;
+    return (currentUser?._id || session?.user?.id) === userId;
   };
 
   const filteredUsers = allUsers.filter(user => 
     user.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading) {
+  // Loading state can still be used for client-side operations after initial load
+  if (status === 'loading' && !initialTodos.length && !initialFriends.length) { // Adjusted loading condition
     return (
       <div 
         className="min-h-screen flex items-center justify-center"
@@ -378,7 +559,7 @@ export default function Todos() {
                 height={24}
                 style={{ imageRendering: 'pixelated' }}
               />
-              My LunaTODO List
+              {currentUser?.username ? `${currentUser.username}'s LunaTODO List` : "My LunaTODO List"}
             </h1>
             <button
               onClick={handleLogout}
@@ -503,6 +684,7 @@ export default function Todos() {
                         className={`p-2 rounded-full ${
                           todo.completed ? 'bg-pixel-green' : 'bg-gray-300'
                         } shadow-sm`}
+                          disabled={!session} // Disable if no session (though page should redirect)
                       >
                         <FiCheck className="text-white" />
                       </button>
@@ -523,12 +705,14 @@ export default function Todos() {
                         <button
                           onClick={() => handleEditTodo(todo)}
                           className="p-2 text-blue-500 hover:bg-blue-100 rounded-full mr-1"
+                            disabled={!session}
                         >
                           <FiEdit2 />
                         </button>
                         <button
                           onClick={() => handleDeleteTodo(todo._id)}
                           className="p-2 text-red-500 hover:bg-red-100 rounded-full"
+                            disabled={!session}
                         >
                           <FiTrash2 />
                         </button>
