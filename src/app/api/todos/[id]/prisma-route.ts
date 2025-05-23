@@ -5,9 +5,8 @@ import { findTodoByIdAndUserId, updateTodo, deleteTodo } from '@/models/prisma/T
 
 export async function PATCH(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
-  const { params } = context;
   const id = params.id;
   
   try {
@@ -48,9 +47,8 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
-  const { params } = context;
   const id = params.id;
   
   try {

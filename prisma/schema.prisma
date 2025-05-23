@@ -13,7 +13,10 @@ model User {
   password  String
   username  String   @unique
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   todos     Todo[]
+  
+  // Self-relation for friends
   User_A    User[]   @relation("UserFriends")
   User_B    User[]   @relation("UserFriends")
 }
@@ -24,7 +27,8 @@ model Todo {
   description String?
   completed   Boolean   @default(false)
   createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   dueDate     DateTime?
   userId      String
-  user        User      @relation(fields: [userId], references: [id])
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

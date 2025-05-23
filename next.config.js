@@ -6,6 +6,8 @@ const nextConfig = {
     config.externals = [...config.externals, 'bcryptjs'];
     return config;
   },
+  // Exclude MongoDB files from the build
+  pageExtensions: ['js', 'jsx', 'ts', 'tsx'].filter(ext => !ext.includes('mongodb')),
   async headers() {
     return [
       {

@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     // Get the current user
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      include: { friends: true }
+      include: { User_A: true, User_B: true }
     });
     
     if (!user) {
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     }
 
     // Check if they're already friends
-    const alreadyFriends = user.friends.some(f => f.id === friend.id);
+    const alreadyFriends = [...user.User_A, ...user.User_B].some(f => f.id === friend.id);
     if (alreadyFriends) {
       return NextResponse.json(
         { error: 'Already friends with this user' },
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        friends: {
+        User_A: {
           connect: { id: friend.id }
         }
       }
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     await prisma.user.update({
       where: { id: friend.id },
       data: {
-        friends: {
+        User_B: {
           connect: { id: user.id }
         }
       }
@@ -92,7 +92,13 @@ export async function GET() {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       include: {
-        friends: {
+        User_A: {
+          select: {
+            id: true,
+            username: true
+          }
+        },
+        User_B: {
           select: {
             id: true,
             username: true
@@ -108,7 +114,9 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json(user.friends);
+    // Combine both friend lists
+    const friends = [...user.User_A, ...user.User_B];
+    return NextResponse.json(friends);
   } catch (error) {
     console.error('Error fetching friends:', error);
     return NextResponse.json(
@@ -162,7 +170,10 @@ export async function DELETE(request: Request) {
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        friends: {
+        User_A: {
+          disconnect: { id: friend.id }
+        },
+        User_B: {
           disconnect: { id: friend.id }
         }
       }
@@ -171,7 +182,10 @@ export async function DELETE(request: Request) {
     await prisma.user.update({
       where: { id: friend.id },
       data: {
-        friends: {
+        User_A: {
+          disconnect: { id: user.id }
+        },
+        User_B: {
           disconnect: { id: user.id }
         }
       }

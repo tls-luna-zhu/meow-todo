@@ -8,12 +8,23 @@ export async function findUserByUsername(username: string) {
 }
 
 export async function findUserById(id: string) {
-  return prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id },
     include: {
-      friends: true,
+      User_A: true,
+      User_B: true,
     },
   });
+
+  if (!user) return null;
+
+  // Combine User_A and User_B to get all friends
+  const friends = [...user.User_A, ...user.User_B];
+  
+  return {
+    ...user,
+    friends,
+  };
 }
 
 export async function createUser(data: { username: string; email: string; password: string }) {
@@ -44,37 +55,53 @@ export async function getUserFriends(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: {
-      friends: true,
+      User_A: true,
+      User_B: true,
     },
   });
   
-  return user?.friends || [];
+  if (!user) return [];
+  
+  // Combine User_A and User_B to get all friends
+  return [...user.User_A, ...user.User_B];
 }
 
 export async function addFriend(userId: string, friendId: string) {
-  return prisma.user.update({
+  // Connect users in the UserFriends relation
+  await prisma.user.update({
     where: { id: userId },
     data: {
-      friends: {
+      User_A: {
         connect: { id: friendId },
       },
     },
-    include: {
-      friends: true,
-    },
   });
+
+  // Return the updated user with friends
+  return findUserById(userId);
 }
 
 export async function removeFriend(userId: string, friendId: string) {
-  return prisma.user.update({
+  // Disconnect from User_A relation
+  await prisma.user.update({
     where: { id: userId },
     data: {
-      friends: {
+      User_A: {
         disconnect: { id: friendId },
       },
     },
-    include: {
-      friends: true,
+  });
+
+  // Disconnect from User_B relation
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      User_B: {
+        disconnect: { id: friendId },
+      },
     },
   });
+
+  // Return the updated user with friends
+  return findUserById(userId);
 }

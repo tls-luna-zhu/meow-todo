@@ -55,8 +55,8 @@ async function main() {
           await prisma.user.update({
             where: { id: prismaUserId },
             data: {
-              friends: {
-                connect: friendIds.map(id => ({ id })),
+              User_A: {
+                connect: friendIds.map((id: string) => ({ id })),
               },
             },
           });
