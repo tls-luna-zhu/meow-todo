@@ -33,15 +33,25 @@ export async function POST(request: Request) {
   }
 }
 
-// Optional: GET handler if direct client-side cookie reading is not preferred
-// For this task, getServerSideProps will read cookies directly.
-// export async function GET() {
-//   const cookieStore = cookies();
-//   const sortByDueDate = cookieStore.get('preference_sortByDueDate')?.value;
-//   const hideCompletedUser = cookieStore.get('preference_hideCompletedUser')?.value;
+export async function GET() {
+  try {
+    const cookieStore = cookies();
+    const sortByDueDateCookie = cookieStore.get('preference_sortByDueDate')?.value;
+    const hideCompletedUserCookie = cookieStore.get('preference_hideCompletedUser')?.value;
 
-//   return NextResponse.json({
-//     sortByDueDate: sortByDueDate ? sortByDueDate === 'true' : undefined,
-//     hideCompletedUser: hideCompletedUser ? hideCompletedUser === 'true' : undefined,
-//   });
-// }
+    // Default preferences if cookies are not set or invalid
+    const sortByDueDate = sortByDueDateCookie ? sortByDueDateCookie === 'true' : true;
+    const hideCompletedUser = hideCompletedUserCookie ? hideCompletedUserCookie === 'true' : false;
+
+    return NextResponse.json({
+      sortByDueDate,
+      hideCompletedUser,
+    });
+  } catch (error) {
+    console.error('Error fetching preferences:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch preferences' },
+      { status: 500 }
+    );
+  }
+}
