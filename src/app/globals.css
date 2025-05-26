@@ -4,7 +4,53 @@
 
 :root {
   --foreground-rgb: 0, 0, 0;
-  --background-rgb: 255, 105, 180;
+  /* --background-rgb: 255, 105, 180; /* Original pink, replaced by body-bg-light */
+
+  /* Body Backgrounds */
+  --body-bg-light: linear-gradient(45deg, #ffb6c1 25%, #ffc1d0 25%, #ffc1d0 50%, #ffb6c1 50%, #ffb6c1 75%, #ffc1d0 75%, #ffc1d0);
+  --body-bg-dark: linear-gradient(45deg, #2c193c 25%, #3a224a 25%, #3a224a 50%, #2c193c 50%, #2c193c 75%, #3a224a 75%, #3a224a); /* Dark pastel purple gradient */
+
+  /* General UI Backgrounds (e.g., cards, modals) */
+  --background-start-rgb: 255, 182, 193; /* Light Pink */
+  --background-end-rgb: 255, 192, 203;   /* Slightly different Light Pink */
+  
+  /* Pastel Palette - Light Mode */
+  --pixel-pink-color: #FF69B4;
+  --pixel-purple-color: #9370DB;
+  --pixel-blue-color: #87CEEB;
+  --pixel-green-color: #98FB98;
+  --pixel-white-color: #FFFFFF;
+  --pixel-black-color: #000000;
+  --pixel-shadow-color: rgba(0, 0, 0, 0.8);
+  --pixel-border-color: #000000;
+  --pixel-input-bg-color: #FFFFFF;
+  --pixel-input-border-color: #9370DB;
+  --pixel-input-focus-shadow-color: rgba(147, 112, 219, 0.2);
+  --pixel-scrollbar-track-color: rgba(255, 255, 255, 0.1);
+  --pixel-scrollbar-thumb-color: rgba(255, 255, 255, 0.2);
+  --pixel-scrollbar-thumb-hover-color: rgba(255, 255, 255, 0.3);
+}
+
+html.dark {
+  --foreground-rgb: 230, 230, 230; /* Light gray for dark mode text */
+  --background-start-rgb: 40, 30, 50; /* Dark Purple for general backgrounds in dark mode */
+  --background-end-rgb: 50, 40, 60;   /* Slightly different Dark Purple */
+
+  /* Pastel Palette - Dark Mode */
+  --pixel-pink-color: #D4508E; /* Darker pink */
+  --pixel-purple-color: #7A5DAF; /* Darker purple */
+  --pixel-blue-color: #6A9DB8; /* Darker blue */
+  --pixel-green-color: #7BC77B; /* Darker green */
+  --pixel-white-color: #2c193c; /* Dark background for elements that were white */
+  --pixel-black-color: #E6E6E6; /* Light gray for elements that were black */
+  --pixel-shadow-color: rgba(200, 200, 200, 0.7); /* Lighter shadow for dark mode */
+  --pixel-border-color: #CCCCCC; /* Lighter border */
+  --pixel-input-bg-color: #3a224a; /* Darker input background */
+  --pixel-input-border-color: #7A5DAF; /* Darker input border */
+  --pixel-input-focus-shadow-color: rgba(122, 93, 175, 0.3);
+  --pixel-scrollbar-track-color: rgba(0, 0, 0, 0.2);
+  --pixel-scrollbar-thumb-color: rgba(0, 0, 0, 0.4);
+  --pixel-scrollbar-thumb-hover-color: rgba(0, 0, 0, 0.6);
 }
 
 @layer base {
@@ -15,7 +61,15 @@
 
 body {
   color: rgb(var(--foreground-rgb));
-  background-color: rgb(var(--background-rgb));
+  background: var(--body-bg-light); /* Use the CSS variable */
+  background-size: 40px 40px; /* Keep existing background size */
+  image-rendering: pixelated;
+  min-height: 100vh; /* Ensure body takes full height */
+}
+
+html.dark body {
+  background: var(--body-bg-dark); /* Use the dark background variable */
+  background-size: 40px 40px; /* Ensure these are applied */
   image-rendering: pixelated;
 }
 
@@ -39,8 +93,13 @@ body {
 }
 
 .shadow-pixel {
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.8);
-  border: 2px solid #000;
+  box-shadow: 4px 4px 0 var(--pixel-shadow-color);
+  border: 2px solid var(--pixel-border-color);
+}
+
+html.dark .shadow-pixel {
+  box-shadow: 4px 4px 0 var(--pixel-shadow-color); 
+  border: 2px solid var(--pixel-border-color);
 }
 
 .pixel-btn {
@@ -75,65 +134,106 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--pixel-scrollbar-track-color);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--pixel-scrollbar-thumb-color);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--pixel-scrollbar-thumb-hover-color);
 }
 
 /* Pixel art button styles */
 .pixel-button {
   position: relative;
   padding: 0.5rem 1rem;
-  background-color: #9370DB;
-  color: white;
-  border: none;
+  background-color: var(--pixel-purple-color); /* Themed */
+  color: var(--pixel-white-color); /* Themed for contrast on dark */
+  border: none; /* Border set by shadow-pixel if used together */
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.1s ease;
-  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+  box-shadow: 4px 4px 0px 0px var(--pixel-shadow-color); /* Themed */
 }
+
+html.dark .pixel-button {
+  color: rgb(var(--foreground-rgb)); /* Ensure text is light on dark buttons */
+}
+
 
 .pixel-button:hover {
   transform: translate(-1px, -1px);
-  box-shadow: 5px 5px 0px 0px rgba(0, 0, 0, 1);
+  box-shadow: 5px 5px 0px 0px var(--pixel-shadow-color); /* Themed */
 }
 
 .pixel-button:active {
   transform: translate(3px, 3px);
-  box-shadow: 1px 1px 0px 0px rgba(0, 0, 0, 1);
+  box-shadow: 1px 1px 0px 0px var(--pixel-shadow-color); /* Themed */
 }
 
 /* Pixel art input styles */
 .pixel-input {
   padding: 0.5rem;
-  border: 2px solid #9370DB;
+  border: 2px solid var(--pixel-input-border-color); /* Themed */
   border-radius: 4px;
-  background-color: white;
+  background-color: var(--pixel-input-bg-color); /* Themed */
+  color: rgb(var(--foreground-rgb)); /* Ensure text color matches theme */
   transition: all 0.2s ease;
 }
 
 .pixel-input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(147, 112, 219, 0.2);
+  box-shadow: 0 0 0 2px var(--pixel-input-focus-shadow-color); /* Themed */
 }
 
 /* Pixel art card styles */
 .pixel-card {
-  background-color: white;
+  background-color: var(--pixel-white-color); /* Themed */
   border-radius: 8px;
-  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+  box-shadow: 4px 4px 0px 0px var(--pixel-shadow-color); /* Themed */
+  border: 2px solid var(--pixel-border-color); /* Added themed border */
   transition: all 0.2s ease;
 }
 
 .pixel-card:hover {
   transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0px 0px rgba(0, 0, 0, 1);
+  box-shadow: 6px 6px 0px 0px var(--pixel-shadow-color); /* Themed */
 }
+
+/* Utility Overrides for Dark Mode */
+html.dark .bg-white {
+  background-color: var(--pixel-white-color) !important;
+}
+
+html.dark .text-black {
+  color: var(--pixel-black-color) !important;
+}
+
+html.dark .text-gray-600 {
+  color: #b0b0b0 !important; /* Lighter gray for text */
+}
+
+html.dark .border-black {
+  border-color: var(--pixel-border-color) !important;
+}
+
+/* Themeing for specific pastel colors from Tailwind config */
+/* These classes would be used like: bg-pixel-pink, dark:bg-pixel-pink */
+.bg-pixel-pink { background-color: var(--pixel-pink-color); }
+.bg-pixel-purple { background-color: var(--pixel-purple-color); }
+.bg-pixel-blue { background-color: var(--pixel-blue-color); }
+.bg-pixel-green { background-color: var(--pixel-green-color); }
+
+.text-pixel-pink { color: var(--pixel-pink-color); }
+.text-pixel-purple { color: var(--pixel-purple-color); }
+.text-pixel-blue { color: var(--pixel-blue-color); }
+.text-pixel-green { color: var(--pixel-green-color); }
+
+.border-pixel-pink { border-color: var(--pixel-pink-color); }
+.border-pixel-purple { border-color: var(--pixel-purple-color); }
+.border-pixel-blue { border-color: var(--pixel-blue-color); }
+.border-pixel-green { border-color: var(--pixel-green-color); }
