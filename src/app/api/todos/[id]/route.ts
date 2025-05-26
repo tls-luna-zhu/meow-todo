@@ -34,18 +34,48 @@ export async function PATCH(
     }
 
     // Update only the fields that are provided
-    if (updates.completed !== undefined) todo.completed = updates.completed;
-    if (updates.title !== undefined) todo.title = updates.title;
-    if (updates.description !== undefined) todo.description = updates.description || '';
-    if (updates.dueDate !== undefined) todo.dueDate = updates.dueDate || null;
+    if (updates.completed !== undefined) {
+      todo.completed = updates.completed;
+    }
+    if (updates.title !== undefined) {
+      // Ensure title is not empty if provided
+      if (updates.title.trim() === '') {
+        return NextResponse.json({ error: 'Title cannot be empty' }, { status: 400 });
+      }
+      todo.title = updates.title;
+    }
+    if (updates.description !== undefined) {
+      todo.description = updates.description || ''; // Allow empty string for description
+    }
+    
+    // Handle dueDate update with validation
+    if (updates.dueDate !== undefined) {
+      if (updates.dueDate === null || updates.dueDate === '') {
+        todo.dueDate = null;
+      } else if (typeof updates.dueDate === 'string') {
+        if (isNaN(new Date(updates.dueDate).getTime())) {
+          return NextResponse.json(
+            { error: 'Invalid dueDate format. Please use a valid date string.' },
+            { status: 400 }
+          );
+        }
+        todo.dueDate = new Date(updates.dueDate);
+      } else {
+        // If dueDate is provided but not a string, null, or empty string (e.g. a number)
+        return NextResponse.json(
+          { error: 'Invalid dueDate format. Please use a string, null, or empty string.' },
+          { status: 400 }
+        );
+      }
+    }
     
     await todo.save();
 
     const updatedTodo = await Todo.findById(todo._id).populate('user', 'username');
 
     return NextResponse.json(updatedTodo);
-  } catch (error) {
-    console.error('Error updating todo:', error);
+  } catch (error: any) {
+    console.error('Error updating todo:', error.message, { stack: error.stack });
     return NextResponse.json(
       { error: 'Failed to update todo' },
       { status: 500 }
@@ -81,8 +111,8 @@ export async function DELETE(
     }
 
     return NextResponse.json({ message: 'Todo deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting todo:', error);
+  } catch (error: any) {
+    console.error('Error deleting todo:', error.message, { stack: error.stack });
     return NextResponse.json(
       { error: 'Failed to delete todo' },
       { status: 500 }

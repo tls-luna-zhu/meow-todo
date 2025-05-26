@@ -29,8 +29,8 @@ export async function GET() {
     }).populate('user', 'username').sort({ createdAt: -1 });
 
     return NextResponse.json(todos);
-  } catch (error) {
-    console.error('Error fetching todos:', error);
+  } catch (error: any) {
+    console.error('Error fetching todos:', error.message, { stack: error.stack });
     return NextResponse.json(
       { error: 'Failed to fetch todos' },
       { status: 500 }
@@ -55,20 +55,35 @@ export async function POST(request: Request) {
       );
     }
 
-    await connectDB();
-
-    const todo = await Todo.create({
+    const todoData: any = {
       title,
       description,
-      dueDate,
       user: session.user.id,
-    });
+    };
+
+    if (dueDate) {
+      if (isNaN(new Date(dueDate).getTime())) {
+        return NextResponse.json(
+          { error: 'Invalid dueDate format. Please use a valid date string.' },
+          { status: 400 }
+        );
+      }
+      todoData.dueDate = new Date(dueDate);
+    } else if (dueDate === '' || dueDate === null) {
+      // Allow explicitly setting dueDate to null or unsetting it
+      todoData.dueDate = null; 
+    }
+
+
+    await connectDB();
+
+    const todo = await Todo.create(todoData);
 
     const populatedTodo = await Todo.findById(todo._id).populate('user', 'username');
 
     return NextResponse.json(populatedTodo, { status: 201 });
-  } catch (error) {
-    console.error('Error creating todo:', error);
+  } catch (error: any) {
+    console.error('Error creating todo:', error.message, { stack: error.stack });
     return NextResponse.json(
       { error: 'Failed to create todo' },
       { status: 500 }
