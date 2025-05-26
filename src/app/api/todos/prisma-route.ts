@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/options';
 import { findUserById } from '@/models/prisma/User';
-import { getUserAndFriendsTodos, createTodo } from '@/models/prisma/Todo';
+import { getTodosForUser, createTodo } from '@/models/prisma/Todo'; // Removed getUserAndFriendsTodos
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
@@ -12,16 +12,30 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get the current user and their friends
-    const user = await findUserById(session.user.id);
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-    
-    const friendIds = user.friends ? user.friends.map(friend => friend.id) : [];
+    const currentUserId = session.user.id;
+    const url = new URL(request.url);
+    const requestedUserId = url.searchParams.get('userId');
 
-    // Get todos from the current user and their friends
-    const todos = await getUserAndFriendsTodos(session.user.id, friendIds);
+    let todos;
+
+    if (requestedUserId) {
+      // If a specific userId is requested, check authorization
+      if (requestedUserId !== currentUserId) {
+        const user = await findUserById(currentUserId);
+        if (!user) {
+          return NextResponse.json({ error: 'Current user not found' }, { status: 404 });
+        }
+        const friendIds = user.friends ? user.friends.map(friend => friend.id) : [];
+        if (!friendIds.includes(requestedUserId)) {
+          return NextResponse.json({ error: 'Unauthorized to view these tasks' }, { status: 403 });
+        }
+      }
+      // If authorized (either self or a friend)
+      todos = await getTodosForUser(requestedUserId);
+    } else {
+      // If no specific userId is requested, fetch tasks for the current user only
+      todos = await getTodosForUser(currentUserId);
+    }
 
     return NextResponse.json(todos);
   } catch (error) {

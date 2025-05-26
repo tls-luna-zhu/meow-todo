@@ -42,6 +42,25 @@ export async function getUserTodos(userId: string) {
   });
 }
 
+export async function getTodosForUser(targetUserId: string) {
+  return prisma.todo.findMany({
+    where: {
+      userId: targetUserId,
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+}
+
 export async function getUserAndFriendsTodos(userId: string, friendIds: string[]) {
   return prisma.todo.findMany({
     where: {

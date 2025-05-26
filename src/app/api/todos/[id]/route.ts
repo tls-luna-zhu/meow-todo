@@ -44,8 +44,9 @@ export async function PATCH(request, { params }) {
 }
 
 // Using a simpler version without type annotations to avoid build errors
-export async function DELETE(request, { params }) {
-  const id = params.id;
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  const id = resolvedParams.id;
   
   try {
     const session = await getServerSession(authOptions);
