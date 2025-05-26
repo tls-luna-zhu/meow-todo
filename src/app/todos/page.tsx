@@ -9,8 +9,14 @@ import Image from 'next/image';
 // Cache constants
 const TODOS_CACHE_KEY_PREFIX = 'todos_cache_';
 const FRIENDS_CACHE_KEY_PREFIX = 'friends_cache_';
-const ALL_USERS_CACHE_KEY_PREFIX = 'all_users_cache_'; // New cache key for all users
+const ALL_USERS_CACHE_KEY_PREFIX = 'all_users_cache_';
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour in milliseconds
+
+// User Preference Keys
+const USER_PREFS_HIDE_COMPLETED_KEY_PREFIX = 'userPrefs_hideCompleted_';
+const USER_PREFS_SORT_BY_DUE_DATE_KEY_PREFIX = 'userPrefs_sortByDueDate_';
+const USER_PREFS_SECOND_COLUMN_VIEW_KEY_PREFIX = 'userPrefs_secondColumnView_';
+
 
 // Cache helper functions
 
@@ -108,56 +114,104 @@ export default function Todos() {
   const [deletingTodoId, setDeletingTodoId] = useState<string | null>(null);
   const [isSavingEdit, setIsSavingEdit] = useState(false); // For edit modal save button
 
-  // Effect to handle initial data loading and authentication status changes
+  // Effect to handle initial data loading (todos, friends) and authentication status
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/auth/signin'); // Redirect to signin if not authenticated
+      router.push('/auth/signin'); 
     } else if (status === 'authenticated' && session?.user?.id) {
-      setLoading(true); // Start loading indicator
+      setLoading(true); 
       const userId = session.user.id;
 
-      // Attempt to load Todos from cache
+      // Load Todos from cache or fetch
       const todosCacheKey = getCacheKey(TODOS_CACHE_KEY_PREFIX, userId);
       if (todosCacheKey) {
         const cachedTodos = getCachedData<Todo[]>(todosCacheKey);
-        if (cachedTodos) {
-          setTodos(cachedTodos); // Use cached todos
-          // Potentially set loading to false if friends are also cached or not needed immediately
-        } else {
-          fetchTodos(); // Fetch if not in cache or stale
-        }
+        if (cachedTodos) setTodos(cachedTodos); else fetchTodos();
       } else {
-        fetchTodos(); // Fetch if cache key generation failed (should not happen with userId)
+        fetchTodos();
       }
 
-      // Attempt to load Friends from cache
+      // Load Friends from cache or fetch
       const friendsCacheKey = getCacheKey(FRIENDS_CACHE_KEY_PREFIX, userId);
       if (friendsCacheKey) {
         const cachedFriends = getCachedData<User[]>(friendsCacheKey);
-        if (cachedFriends) {
-          setFriends(cachedFriends); // Use cached friends
-        } else {
-          fetchFriends(); // Fetch if not in cache or stale
-        }
+        if (cachedFriends) setFriends(cachedFriends); else fetchFriends();
       } else {
-        fetchFriends(); // Fetch if cache key generation failed
+        fetchFriends();
       }
       
-      // Determine final loading state
-      const areTodosCached = todosCacheKey ? !!getCachedData<Todo[]>(todosCacheKey) : false;
-      const areFriendsCached = friendsCacheKey ? !!getCachedData<User[]>(friendsCacheKey) : false;
-      
-      if ((areTodosCached || !todosCacheKey) && (areFriendsCached || !friendsCacheKey)) {
-         // If both are cached (or cache key couldn't be generated, implying an issue handled by fetch)
-         // and fetchTodos itself will set loading to false eventually.
-         // This ensures loading is false if all initial data can be potentially loaded from cache.
-         // If fetchTodos/fetchFriends are called, they will set loading to false in their finally block.
-         if(areTodosCached && areFriendsCached) setLoading(false);
+      // Determine final loading state for cached data
+      const areTodosCached = todosCacheKey && getCachedData<Todo[]>(todosCacheKey);
+      const areFriendsCached = friendsCacheKey && getCachedData<User[]>(friendsCacheKey);
+      if (areTodosCached && areFriendsCached) {
+        setLoading(false); // Only set loading false if both are from cache, fetchTodos will handle it otherwise
       }
     }
-  }, [status, router, session?.user?.id]); // Dependencies for the effect
-  
-  // Removed automated hideCompleted setting when viewing Finished Tasks
+  }, [status, router, session?.user?.id]);
+
+  // Effect to load user preferences from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && status === 'authenticated' && session?.user?.id) {
+      const userId = session.user.id;
+
+      // Load hideCompletedUser preference
+      const hideCompletedKey = `${USER_PREFS_HIDE_COMPLETED_KEY_PREFIX}${userId}`;
+      const storedHideCompleted = localStorage.getItem(hideCompletedKey);
+      if (storedHideCompleted !== null) {
+        setHideCompletedUser(storedHideCompleted === 'true');
+      }
+
+      // Load sortByDueDate preference
+      const sortByDueDateKey = `${USER_PREFS_SORT_BY_DUE_DATE_KEY_PREFIX}${userId}`;
+      const storedSortByDueDate = localStorage.getItem(sortByDueDateKey);
+      if (storedSortByDueDate !== null) {
+        setSortByDueDate(storedSortByDueDate === 'true');
+      }
+
+      // Load secondColumnView preference
+      const secondColumnViewKey = `${USER_PREFS_SECOND_COLUMN_VIEW_KEY_PREFIX}${userId}`;
+      const storedSecondColumnView = localStorage.getItem(secondColumnViewKey);
+      if (storedSecondColumnView === 'completed' || storedSecondColumnView === 'friends') {
+        setSecondColumnView(storedSecondColumnView as 'friends' | 'completed');
+      }
+    }
+  }, [status, session?.user?.id]); // Rerun if auth status or user ID changes
+
+  // Effect to save hideCompletedUser preference to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && status === 'authenticated' && session?.user?.id) {
+      const hideCompletedKey = `${USER_PREFS_HIDE_COMPLETED_KEY_PREFIX}${session.user.id}`;
+      try {
+        localStorage.setItem(hideCompletedKey, hideCompletedUser.toString());
+      } catch (e) {
+        console.error("Failed to save 'hideCompletedUser' preference:", e);
+      }
+    }
+  }, [hideCompletedUser, status, session?.user?.id]);
+
+  // Effect to save sortByDueDate preference to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && status === 'authenticated' && session?.user?.id) {
+      const sortByDueDateKey = `${USER_PREFS_SORT_BY_DUE_DATE_KEY_PREFIX}${session.user.id}`;
+      try {
+        localStorage.setItem(sortByDueDateKey, sortByDueDate.toString());
+      } catch (e) {
+        console.error("Failed to save 'sortByDueDate' preference:", e);
+      }
+    }
+  }, [sortByDueDate, status, session?.user?.id]);
+
+  // Effect to save secondColumnView preference to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && status === 'authenticated' && session?.user?.id) {
+      const secondColumnViewKey = `${USER_PREFS_SECOND_COLUMN_VIEW_KEY_PREFIX}${session.user.id}`;
+      try {
+        localStorage.setItem(secondColumnViewKey, secondColumnView);
+      } catch (e) {
+        console.error("Failed to save 'secondColumnView' preference:", e);
+      }
+    }
+  }, [secondColumnView, status, session?.user?.id]);
   
   // Fetches all todos (user's and friends') from the API and updates cache
   const fetchTodos = async () => {
