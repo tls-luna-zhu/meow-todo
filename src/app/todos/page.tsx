@@ -724,6 +724,21 @@ export default function Todos() {
     user.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Helper function to check if a due date is today
+  const isDueToday = (dueDateString?: string | null): boolean => {
+    if (!dueDateString) {
+      return false;
+    }
+    const today = new Date();
+    const dueDate = new Date(dueDateString);
+    // Compare year, month, and day, ignoring time and timezone differences
+    return (
+      dueDate.getFullYear() === today.getFullYear() &&
+      dueDate.getMonth() === today.getMonth() &&
+      dueDate.getDate() === today.getDate()
+    );
+  };
+
   // Display loading screen while initial data is being fetched
   if (loading) {
     return (
@@ -886,7 +901,11 @@ export default function Todos() {
                   sortedUserTodos.map((todo) => (
                     <div
                       key={todo._id}
-                      className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border-2 border-gray-200 shadow-pixel"
+                      className={`flex items-center gap-4 p-4 rounded-lg border-2 shadow-pixel ${
+                        isDueToday(todo.dueDate) && !todo.completed 
+                          ? 'bg-pixel-green bg-opacity-50 border-pixel-green' 
+                          : 'bg-gray-50 border-gray-200'
+                      }`}
                     >
                       <button
                         onClick={() => handleToggleTodo(todo._id, !todo.completed)}
