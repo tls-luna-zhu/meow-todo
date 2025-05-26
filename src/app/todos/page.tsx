@@ -6,6 +6,74 @@ import { useRouter } from 'next/navigation';
 import { FiPlus, FiTrash2, FiCheck, FiUserPlus, FiLogOut, FiUsers, FiX, FiClock, FiEdit2, FiEye, FiEyeOff, FiCheckSquare } from 'react-icons/fi';
 import Image from 'next/image';
 
+// Cache constants
+const TODOS_CACHE_KEY_PREFIX = 'todos_cache_';
+const FRIENDS_CACHE_KEY_PREFIX = 'friends_cache_';
+const ALL_USERS_CACHE_KEY_PREFIX = 'all_users_cache_';
+const CACHE_DURATION = 60 * 60 * 1000; // 1 hour in milliseconds
+
+// User Preference Keys
+const USER_PREFS_HIDE_COMPLETED_KEY_PREFIX = 'userPrefs_hideCompleted_';
+const USER_PREFS_SORT_BY_DUE_DATE_KEY_PREFIX = 'userPrefs_sortByDueDate_';
+const USER_PREFS_SECOND_COLUMN_VIEW_KEY_PREFIX = 'userPrefs_secondColumnView_';
+
+
+// Cache helper functions
+
+/**
+ * Generates a cache key with a given prefix and user ID.
+ * @param prefix The prefix for the cache key (e.g., 'todos_cache_').
+ * @param userId The user's ID.
+ * @returns The generated cache key or null if userId is not provided.
+ */
+const getCacheKey = (prefix: string, userId: string | undefined) => {
+  if (!userId) return null;
+  return `${prefix}${userId}`;
+};
+
+interface CacheEntry<T> {
+  timestamp: number; // Timestamp of when the data was cached
+  data: T; // The cached data itself
+}
+
+/**
+ * Retrieves cached data from localStorage if it exists and is not stale.
+ * @param key The cache key.
+ * @returns The cached data or null if not found, stale, or an error occurs.
+ */
+const getCachedData = <T>(key: string): T | null => {
+  if (typeof window === 'undefined') return null; // Prevent localStorage access on server
+  const item = localStorage.getItem(key);
+  if (!item) return null;
+
+  try {
+    const entry: CacheEntry<T> = JSON.parse(item);
+    if (Date.now() - entry.timestamp > CACHE_DURATION) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return entry.data;
+  } catch (error) {
+    console.error('Error parsing cached data:', error);
+    localStorage.removeItem(key); // Corrupted cache
+    return null;
+  }
+};
+
+const setCachedData = <T>(key: string, data: T) => {
+  if (typeof window === 'undefined') return;
+  const entry: CacheEntry<T> = {
+  timestamp: Date.now(), // Set current timestamp
+  data, // The data to cache
+  };
+  try {
+    localStorage.setItem(key, JSON.stringify(entry));
+  } catch (error) {
+    console.error('Error setting cached data:', error); // Log error if caching fails
+    // Potentially handle quota exceeded error here, e.g., by clearing older cache items
+  }
+};
+
 interface Todo {
   _id: string;
   title: string;
@@ -42,25 +110,123 @@ export default function Todos() {
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
   const [editFormData, setEditFormData] = useState({ title: '', description: '', dueDate: '' });
   const [secondColumnView, setSecondColumnView] = useState<'friends' | 'completed'>('friends');
+  const [isAddingTodo, setIsAddingTodo] = useState(false);
+  const [deletingTodoId, setDeletingTodoId] = useState<string | null>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false); // For edit modal save button
 
+  // Effect to handle initial data loading (todos, friends) and authentication status
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/auth/signin');
-    } else if (status === 'authenticated') {
-      fetchTodos();
-      fetchFriends();
+      router.push('/auth/signin'); 
+    } else if (status === 'authenticated' && session?.user?.id) {
+      setLoading(true); 
+      const userId = session.user.id;
+
+      // Load Todos from cache or fetch
+      const todosCacheKey = getCacheKey(TODOS_CACHE_KEY_PREFIX, userId);
+      if (todosCacheKey) {
+        const cachedTodos = getCachedData<Todo[]>(todosCacheKey);
+        if (cachedTodos) setTodos(cachedTodos); else fetchTodos();
+      } else {
+        fetchTodos();
+      }
+
+      // Load Friends from cache or fetch
+      const friendsCacheKey = getCacheKey(FRIENDS_CACHE_KEY_PREFIX, userId);
+      if (friendsCacheKey) {
+        const cachedFriends = getCachedData<User[]>(friendsCacheKey);
+        if (cachedFriends) setFriends(cachedFriends); else fetchFriends();
+      } else {
+        fetchFriends();
+      }
+      
+      // Determine final loading state for cached data
+      const areTodosCached = todosCacheKey && getCachedData<Todo[]>(todosCacheKey);
+      const areFriendsCached = friendsCacheKey && getCachedData<User[]>(friendsCacheKey);
+      if (areTodosCached && areFriendsCached) {
+        setLoading(false); // Only set loading false if both are from cache, fetchTodos will handle it otherwise
+      }
     }
-  }, [status, router]);
+  }, [status, router, session?.user?.id]);
+
+  // Effect to load user preferences from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && status === 'authenticated' && session?.user?.id) {
+      const userId = session.user.id;
+
+      // Load hideCompletedUser preference
+      const hideCompletedKey = `${USER_PREFS_HIDE_COMPLETED_KEY_PREFIX}${userId}`;
+      const storedHideCompleted = localStorage.getItem(hideCompletedKey);
+      if (storedHideCompleted !== null) {
+        setHideCompletedUser(storedHideCompleted === 'true');
+      }
+
+      // Load sortByDueDate preference
+      const sortByDueDateKey = `${USER_PREFS_SORT_BY_DUE_DATE_KEY_PREFIX}${userId}`;
+      const storedSortByDueDate = localStorage.getItem(sortByDueDateKey);
+      if (storedSortByDueDate !== null) {
+        setSortByDueDate(storedSortByDueDate === 'true');
+      }
+
+      // Load secondColumnView preference
+      const secondColumnViewKey = `${USER_PREFS_SECOND_COLUMN_VIEW_KEY_PREFIX}${userId}`;
+      const storedSecondColumnView = localStorage.getItem(secondColumnViewKey);
+      if (storedSecondColumnView === 'completed' || storedSecondColumnView === 'friends') {
+        setSecondColumnView(storedSecondColumnView as 'friends' | 'completed');
+      }
+    }
+  }, [status, session?.user?.id]); // Rerun if auth status or user ID changes
+
+  // Effect to save hideCompletedUser preference to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && status === 'authenticated' && session?.user?.id) {
+      const hideCompletedKey = `${USER_PREFS_HIDE_COMPLETED_KEY_PREFIX}${session.user.id}`;
+      try {
+        localStorage.setItem(hideCompletedKey, hideCompletedUser.toString());
+      } catch (e) {
+        console.error("Failed to save 'hideCompletedUser' preference:", e);
+      }
+    }
+  }, [hideCompletedUser, status, session?.user?.id]);
+
+  // Effect to save sortByDueDate preference to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && status === 'authenticated' && session?.user?.id) {
+      const sortByDueDateKey = `${USER_PREFS_SORT_BY_DUE_DATE_KEY_PREFIX}${session.user.id}`;
+      try {
+        localStorage.setItem(sortByDueDateKey, sortByDueDate.toString());
+      } catch (e) {
+        console.error("Failed to save 'sortByDueDate' preference:", e);
+      }
+    }
+  }, [sortByDueDate, status, session?.user?.id]);
+
+  // Effect to save secondColumnView preference to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && status === 'authenticated' && session?.user?.id) {
+      const secondColumnViewKey = `${USER_PREFS_SECOND_COLUMN_VIEW_KEY_PREFIX}${session.user.id}`;
+      try {
+        localStorage.setItem(secondColumnViewKey, secondColumnView);
+      } catch (e) {
+        console.error("Failed to save 'secondColumnView' preference:", e);
+      }
+    }
+  }, [secondColumnView, status, session?.user?.id]);
   
-  // Removed automated hideCompleted setting when viewing Finished Tasks
-  
-  // Fetch the current user's todos and their friends' todos
+  // Fetches all todos (user's and friends') from the API and updates cache
   const fetchTodos = async () => {
+    if (!session?.user?.id) return;
+    const userId = session.user.id;
+    const todosCacheKey = getCacheKey(TODOS_CACHE_KEY_PREFIX, userId);
+
     try {
       const response = await fetch('/api/todos');
       const data = await response.json();
       if (response.ok) {
         setTodos(data);
+        if (todosCacheKey) {
+          setCachedData(todosCacheKey, data);
+        }
       } else {
         setError(data.error);
       }
@@ -68,12 +234,31 @@ export default function Todos() {
       console.error('Failed to fetch todos:', err);
       setError('Failed to fetch todos');
     } finally {
-      setLoading(false);
+      setLoading(false); // Ensure loading is set to false after fetching
     }
   };
   
   const handleSortByDueDate = () => {
     setSortByDueDate(!sortByDueDate);
+  };
+
+  /**
+   * Generic function to sort an array of todos.
+   * @param items Array of Todo objects to sort.
+   * @param sortByDueDateFlag Boolean indicating whether to sort by due date or creation date.
+   * @returns A new array of sorted Todo objects.
+   */
+  const sortTodos = (items: Todo[], sortByDueDateFlag: boolean): Todo[] => {
+    return [...items].sort((a, b) => {
+      if (sortByDueDateFlag) {
+        if (!a.dueDate && !b.dueDate) return 0; // Both null or undefined, keep order
+        if (!a.dueDate) return 1; // a is null/undefined, b is not, so b comes first
+        if (!b.dueDate) return -1; // b is null/undefined, a is not, so a comes first
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      }
+      // Default sort by creation date (newest first)
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
   };
   
   // Filter todos into user's todos, completed todos, and friends' todos
@@ -86,41 +271,13 @@ export default function Todos() {
     ? userTodos.filter(todo => !todo.completed) 
     : userTodos;
     
-  // Don't filter friends' todos by completion status
+  // Don't filter friends' todos by completion status (already filtered by not being user's todos)
   const filteredFriendsTodos = friendsTodos;
   
-  // Sort user's todos
-  const sortedUserTodos = [...filteredUserTodos].sort((a, b) => {
-    if (sortByDueDate) {
-      if (!a.dueDate && !b.dueDate) return 0;
-      if (!a.dueDate) return 1;
-      if (!b.dueDate) return -1;
-      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-    }
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
-  
-  // Sort friends' todos
-  const sortedFriendsTodos = [...filteredFriendsTodos].sort((a, b) => {
-    if (sortByDueDate) {
-      if (!a.dueDate && !b.dueDate) return 0;
-      if (!a.dueDate) return 1;
-      if (!b.dueDate) return -1;
-      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-    }
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
-  
-  // Sort completed todos
-  const sortedCompletedTodos = [...completedTodos].sort((a, b) => {
-    if (sortByDueDate) {
-      if (!a.dueDate && !b.dueDate) return 0;
-      if (!a.dueDate) return 1;
-      if (!b.dueDate) return -1;
-      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-    }
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
+  // Use the reusable sort function
+  const sortedUserTodos = sortTodos(filteredUserTodos, sortByDueDate);
+  const sortedFriendsTodos = sortTodos(filteredFriendsTodos, sortByDueDate);
+  const sortedCompletedTodos = sortTodos(completedTodos, sortByDueDate);
 
   const handleToggleHideCompletedUser = () => {
     setHideCompletedUser(!hideCompletedUser);
@@ -139,27 +296,41 @@ export default function Todos() {
     }
   };
 
-  // Fetch current friends
+  // Fetches the current user's friends list from the API and updates cache
   const fetchFriends = async () => {
+    if (!session?.user?.id) return;
+    const userId = session.user.id;
+    const friendsCacheKey = getCacheKey(FRIENDS_CACHE_KEY_PREFIX, userId);
+
     try {
       const response = await fetch('/api/friends');
       if (response.ok) {
         const data = await response.json();
         setFriends(data);
+        if (friendsCacheKey) {
+          setCachedData(friendsCacheKey, data);
+        }
       }
     } catch (err) {
       console.error('Error fetching friends:', err);
     }
   };
 
-  // Fetch all registered users when the user list modal is opened
+  // Fetches all registered users (for friend finding) from the API and updates cache
   const fetchAllUsers = async () => {
+    if (!session?.user?.id) return; // Ensure user is logged in
+    const userId = session.user.id; // User ID for cache key
+    const allUsersCacheKey = getCacheKey(ALL_USERS_CACHE_KEY_PREFIX, userId);
+
     try {
-      setError('');
+      setError(''); // Clear previous errors specifically for this action
       const response = await fetch('/api/users');
       if (response.ok) {
         const data = await response.json();
         setAllUsers(data);
+        if (allUsersCacheKey) {
+          setCachedData(allUsersCacheKey, data);
+        }
       } else {
         const data = await response.json();
         setError(data.error);
@@ -172,68 +343,201 @@ export default function Todos() {
 
   const handleAddTodo = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newTodo.title.trim()) { // Basic validation for title
+      setError('Title is required.');
+      return;
+    }
+    setError('');
+    setIsAddingTodo(true);
+
+    const originalTodos = [...todos];
+    const tempId = `temp-${Date.now()}`;
+    
+    const optimisticTodo: Todo = {
+      _id: tempId,
+      title: newTodo.title,
+      description: newTodo.description || undefined, // Ensure description is undefined if empty, matching interface
+      dueDate: newTodo.dueDate || undefined, // Ensure dueDate is undefined if empty
+      completed: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(), // Tentative updatedAt
+      user: { 
+        username: session?.user?.name || 'You', 
+        _id: session?.user?.id 
+      },
+    };
+
+    setTodos(prevTodos => [optimisticTodo, ...prevTodos]);
+    const currentNewTodoState = { ...newTodo }; // Capture newTodo state before clearing
+    setNewTodo({ title: '', description: '', dueDate: '' }); // Clear inputs
+
     try {
       const response = await fetch('/api/todos', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(newTodo),
+        // Send the captured newTodo state, not the cleared one
+        body: JSON.stringify({ 
+          title: currentNewTodoState.title, 
+          description: currentNewTodoState.description, 
+          dueDate: currentNewTodoState.dueDate 
+        }),
       });
 
       if (response.ok) {
-        const todo = await response.json();
-        setTodos([todo, ...todos]);
-        setNewTodo({ title: '', description: '', dueDate: '' });
+        const serverTodo = await response.json();
+        // Replace optimistic todo with server-confirmed todo
+        setTodos(prevTodos => 
+          [serverTodo, ...prevTodos.filter(t => t._id !== tempId)]
+        );
+        // Update cache with the new state
+        if (session?.user?.id) {
+          const todosCacheKey = getCacheKey(TODOS_CACHE_KEY_PREFIX, session.user.id);
+          if (todosCacheKey) {
+            // Construct the final list for caching
+            const finalTodosForCache = [serverTodo, ...originalTodos.filter(t => t._id !== tempId)]; // Use originalTodos here
+            setCachedData(todosCacheKey, finalTodosForCache);
+          }
+        }
       } else {
         const data = await response.json();
-        setError(data.error);
+        setError(data.error || 'Failed to add task. Please try again.');
+        // Revert UI: remove optimistic todo
+        setTodos(originalTodos);
+        // Revert cache
+        if (session?.user?.id) {
+          const todosCacheKey = getCacheKey(TODOS_CACHE_KEY_PREFIX, session.user.id);
+          if (todosCacheKey) setCachedData(todosCacheKey, originalTodos);
+        }
       }
-    } catch (err) {
-      console.error('Failed to add todo:', err);
-      setError('Failed to add todo');
+    } catch (err: any) {
+      console.error('Failed to add todo:', err.message, { stack: err.stack });
+      setError('Failed to add task. Please try again.');
+      // Revert UI: remove optimistic todo
+      setTodos(originalTodos);
+      // Revert cache
+      if (session?.user?.id) {
+        const todosCacheKey = getCacheKey(TODOS_CACHE_KEY_PREFIX, session.user.id);
+        if (todosCacheKey) setCachedData(todosCacheKey, originalTodos);
+      }
+    } finally {
+      setIsAddingTodo(false);
     }
   };
 
-  const handleToggleTodo = async (todoId: string, completed: boolean) => {
+  const handleToggleTodo = async (todoId: string, newStatus: boolean) => {
+    setError(''); // Clear previous errors
+
+    const originalTodos = [...todos]; // Store original todos for potential revert
+
+    // Optimistic UI Update
+    setTodos(prevTodos =>
+      prevTodos.map(t =>
+        t._id === todoId ? { ...t, completed: newStatus, updatedAt: new Date().toISOString() } : t // Tentatively update updatedAt
+      )
+    );
+
     try {
       const response = await fetch(`/api/todos/${todoId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ completed }),
+        body: JSON.stringify({ completed: newStatus }),
       });
 
       if (response.ok) {
-        setTodos(todos.map(todo =>
-          todo._id === todoId ? { ...todo, completed } : todo
-        ));
+        const updatedTodoFromServer = await response.json();
+        
+        // Construct the new todos list with the server-confirmed data
+        const newTodosState = originalTodos.map(t => 
+          t._id === todoId ? updatedTodoFromServer : t
+        );
+        
+        setTodos(newTodosState); // Update UI with server-confirmed data
+
+        // Update cache with the successfully updated list
+        if (session?.user?.id) {
+          const todosCacheKey = getCacheKey(TODOS_CACHE_KEY_PREFIX, session.user.id);
+          if (todosCacheKey) {
+            setCachedData(todosCacheKey, newTodosState);
+          }
+        }
       } else {
         const data = await response.json();
-        setError(data.error);
+        setError(data.error || 'Failed to update task. Please try again.');
+        setTodos(originalTodos); // Revert UI on API error
+
+        // Revert cache
+        if (session?.user?.id) {
+          const todosCacheKey = getCacheKey(TODOS_CACHE_KEY_PREFIX, session.user.id);
+          if (todosCacheKey) setCachedData(todosCacheKey, originalTodos);
+        }
       }
-    } catch (err) {
-      console.error('Failed to update todo:', err);
-      setError('Failed to update todo');
+    } catch (err: any) {
+      console.error('Failed to update todo:', err.message, { stack: err.stack });
+      setError('Failed to update task. Please try again.');
+      setTodos(originalTodos); // Revert UI on network or other errors
+
+      // Revert cache
+      if (session?.user?.id) {
+        const todosCacheKey = getCacheKey(TODOS_CACHE_KEY_PREFIX, session.user.id);
+        if (todosCacheKey) setCachedData(todosCacheKey, originalTodos);
+      }
     }
   };
 
   const handleDeleteTodo = async (todoId: string) => {
+    setError('');
+    setDeletingTodoId(todoId);
+
+    const originalTodos = [...todos];
+    // const todoToDelete = originalTodos.find(t => t._id === todoId); // For potential specific re-add, not strictly needed if reverting full list
+
+    // Optimistic UI Update
+    setTodos(prevTodos => prevTodos.filter(t => t._id !== todoId));
+
     try {
       const response = await fetch(`/api/todos/${todoId}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
-        setTodos(todos.filter(todo => todo._id !== todoId));
+        // UI is already updated.
+        // Update cache with the successfully filtered list.
+        if (session?.user?.id) {
+          const todosCacheKey = getCacheKey(TODOS_CACHE_KEY_PREFIX, session.user.id);
+          if (todosCacheKey) {
+            // The current 'todos' state is already the filtered list due to optimistic update
+            // However, it's safer to use a list derived from originalTodos or explicitly filter again for cache
+            const finalTodosForCache = originalTodos.filter(t => t._id !== todoId);
+            setCachedData(todosCacheKey, finalTodosForCache);
+          }
+        }
       } else {
         const data = await response.json();
-        setError(data.error);
+        setError(data.error || 'Failed to delete task. Please try again.');
+        setTodos(originalTodos); // Revert UI on API error
+
+        // Revert cache
+        if (session?.user?.id) {
+          const todosCacheKey = getCacheKey(TODOS_CACHE_KEY_PREFIX, session.user.id);
+          if (todosCacheKey) setCachedData(todosCacheKey, originalTodos);
+        }
       }
-    } catch (err) {
-      console.error('Failed to delete todo:', err);
-      setError('Failed to delete todo');
+    } catch (err: any) {
+      console.error('Failed to delete todo:', err.message, { stack: err.stack });
+      setError('Failed to delete task. Please try again.');
+      setTodos(originalTodos); // Revert UI on network or other errors
+
+      // Revert cache
+      if (session?.user?.id) {
+        const todosCacheKey = getCacheKey(TODOS_CACHE_KEY_PREFIX, session.user.id);
+        if (todosCacheKey) setCachedData(todosCacheKey, originalTodos);
+      }
+    } finally {
+      setDeletingTodoId(null);
     }
   };
 
@@ -249,29 +553,75 @@ export default function Todos() {
   const handleUpdateTodo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTodo) return;
+    if (!editFormData.title.trim()) { // Basic validation for title
+      setError('Title is required for editing.'); // Set error within modal or globally
+      return;
+    }
+
+    setError('');
+    setIsSavingEdit(true);
+
+    const originalTodos = [...todos];
+
+    // Optimistic UI Update
+    setTodos(prevTodos =>
+      prevTodos.map(t =>
+        t._id === editingTodo._id
+          ? { ...t, ...editFormData, dueDate: editFormData.dueDate || undefined, description: editFormData.description || undefined, updatedAt: new Date().toISOString() }
+          : t
+      )
+    );
+    
+    const todoIdToUpdate = editingTodo._id; // Store ID before closing modal
+    setEditingTodo(null); // Close modal optimistically
 
     try {
-      const response = await fetch(`/api/todos/${editingTodo._id}`, {
+      const response = await fetch(`/api/todos/${todoIdToUpdate}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(editFormData),
+        body: JSON.stringify(editFormData), // Send current editFormData
       });
 
       if (response.ok) {
-        const updatedTodo = await response.json();
-        setTodos(todos.map(todo =>
-          todo._id === editingTodo._id ? updatedTodo : todo
-        ));
-        setEditingTodo(null);
+        const updatedTodoFromServer = await response.json();
+        // Update UI with server-confirmed data
+        const newTodosState = originalTodos.map(t => 
+          t._id === updatedTodoFromServer._id ? updatedTodoFromServer : t
+        );
+        setTodos(newTodosState);
+
+        // Update cache
+        if (session?.user?.id) {
+          const todosCacheKey = getCacheKey(TODOS_CACHE_KEY_PREFIX, session.user.id);
+          if (todosCacheKey) setCachedData(todosCacheKey, newTodosState);
+        }
       } else {
         const data = await response.json();
-        setError(data.error);
+        setError(data.error || 'Failed to update task. Please try again.');
+        setTodos(originalTodos); // Revert UI
+
+        // Revert cache
+        if (session?.user?.id) {
+          const todosCacheKey = getCacheKey(TODOS_CACHE_KEY_PREFIX, session.user.id);
+          if (todosCacheKey) setCachedData(todosCacheKey, originalTodos);
+        }
+        // Optionally, re-open modal or keep data to allow user to retry
+        // For simplicity, we are just reverting the list and showing an error.
       }
-    } catch (err) {
-      console.error('Failed to update todo:', err);
-      setError('Failed to update todo');
+    } catch (err: any) {
+      console.error('Failed to update todo:', err.message, { stack: err.stack });
+      setError('Failed to update task. Please try again.');
+      setTodos(originalTodos); // Revert UI
+
+      // Revert cache
+      if (session?.user?.id) {
+        const todosCacheKey = getCacheKey(TODOS_CACHE_KEY_PREFIX, session.user.id);
+        if (todosCacheKey) setCachedData(todosCacheKey, originalTodos);
+      }
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -289,8 +639,10 @@ export default function Todos() {
       if (response.ok) {
         // Close the modal and refresh todos/friends
         setShowUserList(false);
-        fetchTodos();
-        fetchFriends();
+        // fetchTodos(); // Data will be updated via fetchFriends -> setFriends -> cache update
+        fetchFriends(); // This will also update friends cache
+        // After adding a friend, their todos might become visible, so refetch todos
+        fetchTodos(); 
       } else {
         const data = await response.json();
         setError(data.error);
@@ -309,7 +661,8 @@ export default function Todos() {
       });
 
       if (response.ok) {
-        fetchFriends();
+        fetchFriends(); // This will also update friends cache
+        // After removing a friend, their todos should be removed from the main list, so refetch todos
         fetchTodos();
       } else {
         const data = await response.json();
@@ -321,14 +674,41 @@ export default function Todos() {
     }
   };
 
+  // Handles user logout: clears session and all user-specific cache
   const handleLogout = async () => {
-    await signOut({ redirect: false });
-    router.push('/');
+    if (typeof window !== 'undefined' && session?.user?.id) {
+      const userId = session.user.id;
+      // Clear all caches associated with the user
+      const todosCacheKey = getCacheKey(TODOS_CACHE_KEY_PREFIX, userId);
+      if (todosCacheKey) localStorage.removeItem(todosCacheKey);
+      
+      const friendsCacheKey = getCacheKey(FRIENDS_CACHE_KEY_PREFIX, userId);
+      if (friendsCacheKey) localStorage.removeItem(friendsCacheKey);
+      
+      const allUsersCacheKey = getCacheKey(ALL_USERS_CACHE_KEY_PREFIX, userId);
+      if (allUsersCacheKey) localStorage.removeItem(allUsersCacheKey);
+    }
+    await signOut({ redirect: false }); // Sign out without immediate redirect
+    router.push('/'); // Redirect to homepage
   };
 
+  // Opens the 'Find Friends' modal and loads user list (from cache or API)
   const handleOpenUserList = () => {
     setShowUserList(true);
-    fetchAllUsers();
+    setError(''); // Clear previous errors when opening modal
+
+    if (!session?.user?.id) return;
+    const userId = session.user.id; // Or use a global key
+    const allUsersCacheKey = getCacheKey(ALL_USERS_CACHE_KEY_PREFIX, userId);
+
+    if (allUsersCacheKey) {
+      const cachedUsers = getCachedData<User[]>(allUsersCacheKey);
+      if (cachedUsers) {
+        setAllUsers(cachedUsers);
+        return; // Data loaded from cache
+      }
+    }
+    fetchAllUsers(); // Fetch if not in cache or stale
   };
 
   const isFriend = (userId: string) => {
@@ -339,10 +719,12 @@ export default function Todos() {
     return session?.user?.id === userId;
   };
 
+  // Client-side filtering of allUsers based on searchTerm
   const filteredUsers = allUsers.filter(user => 
     user.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Display loading screen while initial data is being fetched
   if (loading) {
     return (
       <div 
@@ -400,6 +782,7 @@ export default function Todos() {
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck="false"
+                disabled={isAddingTodo}
               />
             </div>
             <div className="flex gap-4 flex-wrap md:flex-nowrap">
@@ -412,6 +795,7 @@ export default function Todos() {
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck="false"
+                disabled={isAddingTodo}
               />
               <input
                 type="date"
@@ -419,12 +803,18 @@ export default function Todos() {
                 onChange={(e) => setNewTodo({ ...newTodo, dueDate: e.target.value })}
                 className="px-4 py-2 rounded-md border-2 border-gray-300 focus:border-pixel-purple focus:ring-pixel-purple shadow-pixel font-pixel"
                 autoComplete="off"
+                disabled={isAddingTodo}
               />
               <button
                 type="submit"
-                className="px-4 py-2 bg-pixel-purple text-white rounded-md shadow-pixel pixel-btn flex items-center gap-2 font-pixel text-sm whitespace-nowrap"
+                className="px-4 py-2 bg-pixel-purple text-white rounded-md shadow-pixel pixel-btn flex items-center justify-center gap-2 font-pixel text-sm whitespace-nowrap min-w-[120px]"
+                disabled={isAddingTodo}
               >
-                <FiPlus /> Add Task
+                {isAddingTodo ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <><FiPlus /> Add Task</>
+                )}
               </button>
             </div>
           </form>
@@ -523,14 +913,21 @@ export default function Todos() {
                         <button
                           onClick={() => handleEditTodo(todo)}
                           className="p-2 text-blue-500 hover:bg-blue-100 rounded-full mr-1"
+                          disabled={deletingTodoId === todo._id}
                         >
                           <FiEdit2 />
                         </button>
                         <button
                           onClick={() => handleDeleteTodo(todo._id)}
-                          className="p-2 text-red-500 hover:bg-red-100 rounded-full"
+                          className="p-2 text-red-500 hover:bg-red-100 rounded-full w-9 h-9 flex items-center justify-center"
+                          disabled={deletingTodoId === todo._id}
+                          aria-label={deletingTodoId === todo._id ? "Deleting..." : "Delete todo"}
                         >
-                          <FiTrash2 />
+                          {deletingTodoId === todo._id ? (
+                            <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <FiTrash2 />
+                          )}
                         </button>
                       </div>
                     </div>
@@ -607,9 +1004,13 @@ export default function Todos() {
                         key={todo._id}
                         className="flex items-center gap-4 p-4 bg-green-50 rounded-lg border-2 border-green-100 shadow-pixel"
                       >
-                        <div className="p-2 rounded-full bg-pixel-green shadow-sm">
+                        <button
+                          onClick={() => handleToggleTodo(todo._id, false)}
+                          className="p-2 rounded-full bg-pixel-green hover:bg-opacity-80 focus:outline-none focus:ring-2 focus:ring-pixel-green focus:ring-opacity-50 shadow-sm transition-colors"
+                          title="Mark as incomplete"
+                        >
                           <FiCheck className="text-white" />
-                        </div>
+                        </button>
                         <div className="flex-1">
                           <h3 className="text-lg font-pixel line-through text-gray-500">
                             {todo.title}
@@ -629,9 +1030,15 @@ export default function Todos() {
                         <div className="flex">
                           <button
                             onClick={() => handleDeleteTodo(todo._id)}
-                            className="p-2 text-red-500 hover:bg-red-100 rounded-full"
+                            className="p-2 text-red-500 hover:bg-red-100 rounded-full w-9 h-9 flex items-center justify-center"
+                            disabled={deletingTodoId === todo._id}
+                            aria-label={deletingTodoId === todo._id ? "Deleting..." : "Delete todo"}
                           >
-                            <FiTrash2 />
+                            {deletingTodoId === todo._id ? (
+                              <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              <FiTrash2 />
+                            )}
                           </button>
                         </div>
                       </div>
@@ -699,9 +1106,14 @@ export default function Todos() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-pixel-purple text-white rounded-md shadow-pixel pixel-btn font-pixel text-sm"
+                  className="px-4 py-2 bg-pixel-purple text-white rounded-md shadow-pixel pixel-btn font-pixel text-sm min-w-[120px] flex items-center justify-center"
+                  disabled={isSavingEdit}
                 >
-                  Save Changes
+                  {isSavingEdit ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    "Save Changes"
+                  )}
                 </button>
               </div>
             </form>
