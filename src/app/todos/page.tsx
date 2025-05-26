@@ -1004,9 +1004,13 @@ export default function Todos() {
                         key={todo._id}
                         className="flex items-center gap-4 p-4 bg-green-50 rounded-lg border-2 border-green-100 shadow-pixel"
                       >
-                        <div className="p-2 rounded-full bg-pixel-green shadow-sm">
+                        <button
+                          onClick={() => handleToggleTodo(todo._id, false)}
+                          className="p-2 rounded-full bg-pixel-green hover:bg-opacity-80 focus:outline-none focus:ring-2 focus:ring-pixel-green focus:ring-opacity-50 shadow-sm transition-colors"
+                          title="Mark as incomplete"
+                        >
                           <FiCheck className="text-white" />
-                        </div>
+                        </button>
                         <div className="flex-1">
                           <h3 className="text-lg font-pixel line-through text-gray-500">
                             {todo.title}
