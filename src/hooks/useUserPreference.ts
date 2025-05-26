@@ -7,6 +7,46 @@ import { useSession } from 'next-auth/react';
 
 const USER_PREFS_GENERAL_PREFIX = 'userPrefs_';
 
+// Helper function to parse stored string values from localStorage
+function parseStoredValue<T>(
+  storedValue: string | null,
+  defaultValue: T,
+  preferenceKeySuffixForLogging?: string // Optional for more specific logs
+): T {
+  const logPrefix = preferenceKeySuffixForLogging 
+    ? `[parseStoredValue (${preferenceKeySuffixForLogging})]` 
+    : '[parseStoredValue]';
+
+  if (storedValue === null) {
+    console.log(`${logPrefix} No stored value, returning default.`);
+    return defaultValue;
+  }
+
+  if (typeof defaultValue === 'boolean') {
+    const parsed = storedValue === 'true';
+    console.log(`${logPrefix} Parsed boolean from '${storedValue}':`, parsed);
+    return parsed as unknown as T;
+  }
+
+  // For non-boolean types, attempt JSON.parse
+  try {
+    console.log(`${logPrefix} Attempting JSON.parse on:`, storedValue);
+    const parsed = JSON.parse(storedValue);
+    console.log(`${logPrefix} Parsed non-boolean via JSON:`, parsed);
+    return parsed as T;
+  } catch (e) {
+    // If JSON.parse fails, check if the defaultValue is a string.
+    // If so, assume the stored value might be a raw string (for backward compatibility).
+    if (typeof defaultValue === 'string') {
+      console.warn(`${logPrefix} JSON.parse failed. Assuming raw string for '${storedValue}'. Error:`, e);
+      return storedValue as unknown as T;
+    }
+    // For other types, or if defaultValue isn't string, JSON.parse error is more critical.
+    console.error(`${logPrefix} Error parsing preference from localStorage. Value was: '${storedValue}'. Error:`, e, 'Returning default.');
+    return defaultValue;
+  }
+}
+
 function useUserPreference<T>(
   preferenceKeySuffix: string,
   defaultValue: T
@@ -44,31 +84,13 @@ function useUserPreference<T>(
     try {
       const storedValue = localStorage.getItem(key);
       console.log(`[useUserPreference (${preferenceKeySuffix})] useState: localStorage.getItem('${key}') returned:`, storedValue);
-      if (storedValue !== null) {
-        if (typeof defaultValue === 'boolean') {
-          const parsed = storedValue === 'true';
-          console.log(`[useUserPreference (${preferenceKeySuffix})] useState: Parsed boolean:`, parsed);
-          return parsed as unknown as T;
-        }
-        try {
-          console.log(`[useUserPreference (${preferenceKeySuffix})] useState: Attempting JSON.parse on:`, storedValue);
-          const parsed = JSON.parse(storedValue);
-          console.log(`[useUserPreference (${preferenceKeySuffix})] useState: Parsed non-boolean via JSON:`, parsed);
-          return parsed as T;
-        } catch (e) {
-          if (typeof defaultValue === 'string') {
-            console.warn(`[useUserPreference (${preferenceKeySuffix})] useState: JSON.parse failed for string, using raw value:`, storedValue, e);
-            return storedValue as unknown as T; // Use raw string if JSON parse fails for string types
-          }
-          throw e; // Re-throw for other types or unexpected errors
-        }
-      } else {
-        console.log(`[useUserPreference (${preferenceKeySuffix})] useState: No stored value, returning default.`);
-      }
+      // Use the parseStoredValue helper function
+      return parseStoredValue<T>(storedValue, defaultValue, preferenceKeySuffix);
     } catch (error) {
-      console.error(`[useUserPreference (${preferenceKeySuffix})] useState: Error reading or parsing preference '${key}' from localStorage:`, error);
+      // This catch block handles errors from localStorage.getItem itself (e.g., security restrictions)
+      console.error(`[useUserPreference (${preferenceKeySuffix})] useState: Error from localStorage.getItem for key '${key}':`, error);
+      return defaultValue; // Fallback to default if localStorage.getItem throws
     }
-    return defaultValue;
   });
 
   // Effect to re-load from localStorage if userId becomes available OR if key changes
@@ -78,6 +100,12 @@ function useUserPreference<T>(
       const key = getPreferenceKey();
       if (!key) {
         console.warn(`[useUserPreference (${preferenceKeySuffix})] Load effect: Could not generate key (userId: ${userId}).`);
+        // If no key, it implies user is not properly available yet,
+        // consider resetting to default if current value isn't already default.
+        if (JSON.stringify(value) !== JSON.stringify(defaultValue)) {
+            console.log(`[useUserPreference (${preferenceKeySuffix})] Load effect: No key, resetting to default.`);
+            setValue(defaultValue);
+        }
         return;
       }
       
@@ -85,43 +113,38 @@ function useUserPreference<T>(
       try {
         const storedValue = localStorage.getItem(key);
         console.log(`[useUserPreference (${preferenceKeySuffix})] Load effect: localStorage.getItem('${key}') returned:`, storedValue);
-        if (storedValue !== null) {
-          let newValue: T;
-          if (typeof defaultValue === 'boolean') {
-            newValue = (storedValue === 'true') as unknown as T;
-          } else {
-            try {
-              newValue = JSON.parse(storedValue) as T;
-            } catch (e) {
-              if (typeof defaultValue === 'string') {
-                console.warn(`[useUserPreference (${preferenceKeySuffix})] Load effect: JSON.parse failed for string, using raw value:`, storedValue, e);
-                newValue = storedValue as unknown as T;
-              } else {
-                throw e;
-              }
-            }
-          }
-          console.log(`[useUserPreference (${preferenceKeySuffix})] Load effect: Parsed value:`, newValue);
-          // Removed the conditional update (JSON.stringify compare) for now to ensure setValue is called.
-          // This might cause an extra re-render if the value is indeed the same, but is safer for debugging.
-          // It can be added back if performance becomes an issue.
-          console.log(`[useUserPreference (${preferenceKeySuffix})] Load effect: Calling setValue with parsed value.`);
-          setValue(newValue);
+        
+        const newValue = parseStoredValue<T>(storedValue, defaultValue, preferenceKeySuffix);
+        console.log(`[useUserPreference (${preferenceKeySuffix})] Load effect: Parsed value from parseStoredValue:`, newValue);
+
+        // Only update state if the newly parsed value is different from the current state value.
+        // This avoids unnecessary re-renders if the value in localStorage was already reflected or was invalid.
+        if (JSON.stringify(value) !== JSON.stringify(newValue)) {
+            console.log(`[useUserPreference (${preferenceKeySuffix})] Load effect: Value from storage ('${JSON.stringify(newValue)}') is different from current state ('${JSON.stringify(value)}'), calling setValue.`);
+            setValue(newValue);
         } else {
-            console.log(`[useUserPreference (${preferenceKeySuffix})] Load effect: No value in localStorage for key ${key}. Current state value:`, value);
-            // If nothing in storage, should we reset to default?
-            // This handles case where a preference was cleared from localStorage manually.
-            // Let's ensure it resets to default if current value isn't already default.
-            if (JSON.stringify(value) !== JSON.stringify(defaultValue)) {
-                 console.log(`[useUserPreference (${preferenceKeySuffix})] Load effect: No stored value, and current value is not default. Resetting to default.`);
-                 setValue(defaultValue);
-            }
+            console.log(`[useUserPreference (${preferenceKeySuffix})] Load effect: Parsed value is same as current state, no state update needed.`);
         }
+        
       } catch (error) {
-        console.error(`[useUserPreference (${preferenceKeySuffix})] Load effect: Error reading or parsing preference '${key}':`, error);
+        // This catch primarily handles errors from localStorage.getItem itself.
+        // parseStoredValue handles its own parsing errors and returns defaultValue.
+        console.error(`[useUserPreference (${preferenceKeySuffix})] Load effect: Error directly from localStorage.getItem or during parseStoredValue for key '${key}':`, error);
+        // If an error occurs, and current value is not default, reset to default.
+        if (JSON.stringify(value) !== JSON.stringify(defaultValue)) {
+            console.log(`[useUserPreference (${preferenceKeySuffix})] Load effect: Error occurred, resetting to default.`);
+            setValue(defaultValue);
+        }
       }
+    } else if (sessionStatus !== 'loading' && !userId) {
+        // Handle case where session is loaded but there's no user (e.g., logged out)
+        // Reset to default if current value isn't already default.
+        console.log(`[useUserPreference (${preferenceKeySuffix})] Load effect: User logged out or session available but no user. Resetting to default if needed.`);
+        if (JSON.stringify(value) !== JSON.stringify(defaultValue)) {
+            setValue(defaultValue);
+        }
     }
-  }, [userId, preferenceKeySuffix, defaultValue, getPreferenceKey, sessionStatus]);
+  }, [userId, preferenceKeySuffix, defaultValue, getPreferenceKey, sessionStatus, value]); // Added `value` to dependency array
 
   // Effect to save preference to localStorage when it changes
   useEffect(() => {
