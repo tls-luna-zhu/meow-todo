@@ -10,8 +10,10 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.1.1",
+    "@types/js-cookie": "^3.0.6",
     "autoprefixer": "^10.4.21",
     "bcryptjs": "^2.4.3",
+    "js-cookie": "^3.0.5",
     "mongodb": "^6.3.0",
     "mongoose": "^8.1.1",
     "next": "^15.3.1",
